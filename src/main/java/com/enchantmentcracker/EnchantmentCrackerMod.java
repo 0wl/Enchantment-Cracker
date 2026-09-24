@@ -51,6 +51,7 @@ public final class EnchantmentCrackerMod {
             com.enchantmentcracker.client.ModSettings.load();
             com.enchantmentcracker.game.AutoDropper.setJunkItem(com.enchantmentcracker.client.ModSettings.junkItem);
             com.enchantmentcracker.client.ModKeyBindings.register();
+            com.enchantmentcracker.client.CompassNeedle.register();
             net.minecraftforge.common.MinecraftForge.EVENT_BUS
                     .register(com.enchantmentcracker.client.ClientEvents.class);
             LOGGER.info("Enchantment Cracker ready. Press the 'Open Cracker GUI' key "

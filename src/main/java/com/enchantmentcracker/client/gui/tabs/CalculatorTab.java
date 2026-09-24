@@ -377,7 +377,10 @@ public final class CalculatorTab implements CrackerTab {
     @Override
     public String statusLine() {
         if (message.isEmpty() && autoShelves() >= 0) {
-            return "* Shelves detected around your table: " + autoShelves() + " at most.";
+            int shelves = autoShelves();
+            return shelves >= 15
+                    ? "* 15 is vanilla's cap: bookshelves past 15 around the table add nothing."
+                    : "* Shelves detected around your table: " + shelves + " at most.";
         }
         return message.isEmpty() ? null : message;
     }

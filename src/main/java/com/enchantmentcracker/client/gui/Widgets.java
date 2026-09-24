@@ -217,55 +217,28 @@ public final class Widgets {
                 Mc.fill(ms, x, y + h - 1, x + w, y + h + 1, Theme.PANEL);
             }
 
+            // Light label + drop shadow so it reads on both the selected (light) and unselected
+            // (greyer) tab. Every tab keeps its icon; the name is trimmed only if it truly cannot fit.
+            int colour = on ? Theme.TEXT_TITLE : Theme.TEXT_LIGHT;
             boolean hasIcon = icon != null && !icon.func_190926_b();
-            int labelW = Mc.stringWidth(label);
-            // Three ways to fit, in order of preference: icon + name, then name alone (drop the
-            // icon so the name is never hidden just because it will not fit beside it), then the
-            // icon alone with the name in the tooltip.
-            boolean iconAndName = hasIcon && labelW <= w - 22;
-            boolean nameOnly = !iconAndName && labelW <= w - 6;
-            // On the light selected tab a dark label reads well; on the greyer unselected tabs a
-            // near-black label keeps enough contrast (the old muted grey was grey-on-grey).
-            int colour = on ? Theme.TEXT_TITLE : 0xFF2A2A2A;
-
-            if (iconAndName) {
-                Mc.drawItem(icon, x + 3, y + (h - 16) / 2);
-                int textX = x + 3 + 18 + (w - 3 - 18) / 2;
-                Mc.text(ms, label, textX - labelW / 2, y + (h - 8) / 2, colour);
+            if (hasIcon) {
+                int iconX = x + 3;
+                int iconY = y + (h - 16) / 2;
+                // The compass tab's real needle points at the cursor while its icon is drawn.
                 if (compassNeedle) {
-                    drawNeedle(ms, x + 3 + 8, y + (h - 16) / 2 + 8, mouseX, mouseY);
+                    com.enchantmentcracker.client.CompassNeedle.aimAt(iconX + 8, iconY + 8, mouseX, mouseY);
                 }
-            } else if (nameOnly) {
-                Mc.text(ms, label, x + w / 2 - labelW / 2, y + (h - 8) / 2, colour);
-            } else if (hasIcon) {
-                int ix = x + (w - 16) / 2;
-                int iy = y + (h - 16) / 2;
-                Mc.drawItem(icon, ix, iy);
+                Mc.drawItem(icon, iconX, iconY);
                 if (compassNeedle) {
-                    drawNeedle(ms, ix + 8, iy + 8, mouseX, mouseY);
+                    com.enchantmentcracker.client.CompassNeedle.clear();
                 }
-                return;
+                int textLeft = iconX + 16 + 2;
+                int avail = Math.max(0, (x + w - 3) - textLeft);
+                String text = Mc.trim(label, avail);
+                Mc.text(ms, text, textLeft + (avail - Mc.stringWidth(text)) / 2, y + (h - 8) / 2, colour);
             } else {
                 String text = Mc.trim(label, w - 6);
                 Mc.text(ms, text, x + w / 2 - Mc.stringWidth(text) / 2, y + (h - 8) / 2, colour);
-            }
-        }
-
-        /** A little red-tipped needle from the compass centre towards the cursor. */
-        private static void drawNeedle(MatrixStack ms, int cx, int cy, int mouseX, int mouseY) {
-            double dx = mouseX - cx;
-            double dy = mouseY - cy;
-            double len = Math.sqrt(dx * dx + dy * dy);
-            if (len < 0.5) {
-                return;
-            }
-            double ux = dx / len;
-            double uy = dy / len;
-            for (int i = -5; i <= 6; i++) {
-                int px = (int) Math.round(cx + ux * i);
-                int py = (int) Math.round(cy + uy * i);
-                int colour = i >= 4 ? 0xFFFF3030 : i <= -4 ? 0xFFFFFFFF : 0xFFD0D0D0;
-                Mc.fill(ms, px, py, px + 1, py + 1, colour);
             }
         }
     }

@@ -26,7 +26,7 @@ param(
 $ErrorActionPreference = "Stop"
 $testsDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Split-Path -Parent $testsDir
-$version = "1.2.0"
+$version = "1.2.1"
 
 function Section($text) { Write-Host ""; Write-Host "=== $text ===" -ForegroundColor Cyan }
 function Fail($text) { Write-Host "VERIFY FAILED: $text" -ForegroundColor Red; exit 1 }

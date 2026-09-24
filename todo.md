@@ -6,9 +6,10 @@ All of the items below were done for **1.2.0**. Verify with `tests\verify.ps1` (
 pure-logic feature tests + link check) and the in-game checklist in `tests\VERIFICATION.md`.
 
 - [x] Easter egg: make the needle of the compass icon on the Plan tab point towards the mouse cursor.
-  - Done a safe way: the Plan tab's compass icon has a bright needle drawn over it that points at
-    the cursor (`Widgets.TabButton.drawNeedle`, flagged for the Plan tab in `CrackerScreen`). This
-    avoids replacing vanilla's global compass model property, which would risk real compasses.
+  - The Plan tab's compass icon rotates its real needle at the cursor (`CompassNeedle` swaps the
+    compass model's `angle` property while the icon is drawn, delegating to vanilla otherwise, so
+    actual compasses are untouched). Registered in `EnchantmentCrackerMod`, driven from
+    `Widgets.TabButton`. (1.2.0 drew a line over the item instead; replaced in 1.2.1.)
 - [x] Fix the tab names: "Search" and "Settings" show only an icon.
   - `Widgets.TabButton` now tries icon + name, then name alone (dropping the icon rather than the
     name), and only falls back to icon-only when even the name will not fit.
@@ -17,9 +18,9 @@ pure-logic feature tests + link check) and the in-game checklist in `tests\VERIF
     opened with the `⌕` button next to the `<` `>` arrows on both tabs. Search tab filters the
     items the enchantment can go on; Anvil tab filters every enchantable item. The arrows stay.
 - [x] Make the text easier to read: dark text with a dark drop shadow is hard to read.
-  - `Mc.label`/`Mc.centeredLabel` drop the shadow for dark colours; button labels use them. Tab
-    labels use a near-black colour on the greyer unselected tabs, and the table-overlay greys were
-    lightened.
+  - 1.2.1: the body text is light (white titles) and drawn with a drop shadow (`Mc.text`), and the
+    status colours were lightened (`Theme`), so everything reads on the grey panel instead of dark
+    text sitting on grey.
 - [x] Base the drop search on how much junk the player actually carries, up to a full inventory.
   - Ceiling raised to 36 x 64 = 2304 (`EnchantCalculator.DEFAULT_MAX_THROWS`). The search still
     returns the fewest-drops plan; the Plan/Search steps and the "Drop N (H)" buttons show junk
@@ -34,8 +35,10 @@ pure-logic feature tests + link check) and the in-game checklist in `tests\VERIF
     was applied to `SelfTest.java`, so the end-to-end test drops with Q and checks the stages
     advance to DONE. Still worth a real-game pass (see `tests\VERIFICATION.md`).
 - [x] Auto drop: items should land in front of the player, not at their feet.
-  - `AutoDropper` levels the view (pitch 0) while dropping and restores it afterwards, so items are
-    thrown forward instead of underfoot.
+  - Inventory-throw drops (the mechanism auto-drop uses) already scatter in a random horizontal
+    direction server-side, so they do not pile at your feet. 1.2.0 tried to force the view level
+    for this; that fought the camera after closing the menu, so 1.2.1 removed it — the throws
+    scatter on their own.
 - [x] Make Escape close the cracker menu.
 - [x] Crack the player RNG from dropped-item velocities, so a server seed locks without spending two enchantments.
   - `VelocityCracker`: one captured XP seed gives the top 32 bits; a thrown item's velocity picks

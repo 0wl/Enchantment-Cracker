@@ -187,7 +187,8 @@ public final class CrackerScreen extends McScreen {
         if (!isVisible(current)) {
             current = Tab.SEED;
         }
-        panelWidth = clamp(screenWidth() - 20, 300, 440);
+        // Wide enough that all eight tabs can show their icon and name together.
+        panelWidth = clamp(screenWidth() - 20, 300, 512);
         panelHeight = clamp(screenHeight() - 44, 176, 250);
         panelX = (screenWidth() - panelWidth) / 2;
         panelY = (screenHeight() - panelHeight) / 2 + 8;

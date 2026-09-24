@@ -39,11 +39,6 @@ public final class AutoDropper {
     private static int perTick = 2;
     private static String message = "";
 
-    /** The view saved before auto-dropping, restored when it finishes or stops. */
-    private static boolean viewSaved;
-    private static float savedYaw;
-    private static float savedPitch;
-
     private AutoDropper() {
     }
 
@@ -148,7 +143,6 @@ public final class AutoDropper {
         }
         remaining = count;
         dropped = 0;
-        faceForward();
         message = "Dropping " + count + " " + Mc.itemName(junkItem) + "...";
     }
 
@@ -157,28 +151,6 @@ public final class AutoDropper {
             message = "Stopped after " + dropped + ".";
         }
         remaining = 0;
-        restoreView();
-    }
-
-    /**
-     * Looks level so thrown items travel forward and land a little away, instead of piling at the
-     * player's feet where they get picked straight back up once the pickup delay runs out. The
-     * view is put back the moment dropping ends.
-     */
-    private static void faceForward() {
-        if (!viewSaved && Mc.player() != null) {
-            savedYaw = Mc.playerYaw();
-            savedPitch = Mc.playerPitch();
-            viewSaved = true;
-        }
-        Mc.setPlayerLook(Mc.playerYaw(), 0.0F);
-    }
-
-    private static void restoreView() {
-        if (viewSaved) {
-            Mc.setPlayerLook(savedYaw, savedPitch);
-            viewSaved = false;
-        }
     }
 
     /** Called every client tick. */
@@ -201,7 +173,6 @@ public final class AutoDropper {
                 message = "Ran out of " + Mc.itemName(junkItem) + " with " + remaining + " still to drop.";
                 Mc.chat("§c[Cracker] " + message);
                 remaining = 0;
-                restoreView();
                 return;
             }
             // playerController.windowClick(windowId, slotNumber, 0, THROW, player): drop one item
@@ -212,7 +183,6 @@ public final class AutoDropper {
         if (remaining == 0) {
             message = "Dropped " + dropped + " " + Mc.itemName(junkItem) + ".";
             Mc.chat("§a[Cracker] " + message);
-            restoreView();
         }
     }
 

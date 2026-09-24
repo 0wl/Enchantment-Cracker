@@ -247,8 +247,17 @@ public final class Mc {
         fill(ms, x + width - 1, y + 1, x + width, y + height - 1, argb);
     }
 
-    /** {@code font.drawString(ms, text, x, y, color)} — no shadow. */
+    /**
+     * The mod's body text. Drawn with a drop shadow: the GUI's light text needs the shadow to
+     * read on the grey container panel (and it does no harm on the darker overlays), which is
+     * what keeps every label legible instead of dark-on-grey.
+     */
     public static void text(MatrixStack ms, String s, int x, int y, int color) {
+        font().func_238421_b_(ms, s, x, y, color); // drawStringWithShadow
+    }
+
+    /** {@code font.drawString(ms, text, x, y, color)} — genuinely no shadow, for rare flat text. */
+    public static void flatText(MatrixStack ms, String s, int x, int y, int color) {
         font().func_238405_a_(ms, s, x, y, color);
     }
 

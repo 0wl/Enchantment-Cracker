@@ -31,17 +31,19 @@ public final class Theme {
     public static final int SLOT         = 0xFF8B8B8B;
     public static final int SLOT_SHADE   = 0xFF373737;
 
-    // Text.
-    public static final int TEXT_DARK    = 0xFF404040;
-    public static final int TEXT_MUTED   = 0xFF707070;
+    // Text. Light, and drawn with a drop shadow (see Mc.text), so it reads on the grey panel:
+    // dark text there needed either no shadow or perfect contrast; white-on-shadow is legible
+    // on grey, lighter greys and the dark overlay alike.
+    public static final int TEXT_DARK    = 0xFFEAEAEA;
+    public static final int TEXT_MUTED   = 0xFFBFBFBF;
     public static final int TEXT_LIGHT   = 0xFFE0E0E0;
-    public static final int TEXT_TITLE   = 0xFF3F3F3F;
+    public static final int TEXT_TITLE   = 0xFFFFFFFF;
 
-    // Status colours, matching the game's chat formatting palette.
-    public static final int GOOD         = 0xFF3C8527;
-    public static final int WARN         = 0xFFB06A00;
-    public static final int BAD          = 0xFFA02020;
-    public static final int ACCENT       = 0xFF3B3B8F;
+    // Status colours: lightened so they stay readable as light-on-shadow text.
+    public static final int GOOD         = 0xFF66DD55;
+    public static final int WARN         = 0xFFFFC24D;
+    public static final int BAD          = 0xFFFF6B6B;
+    public static final int ACCENT       = 0xFF6D8CFF;
 
     // Dark tooltip-style panel, for blocks of text.
     public static final int DARK_BG      = 0xF0100010;
