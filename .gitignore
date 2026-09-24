@@ -1,1 +1,5 @@
 build/
+tests/out/
+tests/cp.jar
+tests/selftest/run-*/
+tests/selftest/natives/

@@ -10,7 +10,7 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 ## Install
 
 1. Install **Forge 1.16.5** (36.x).
-2. Drop `enchcracker-1.1.0-forge-1.16.5.jar` into your `mods` folder.
+2. Drop `enchcracker-1.2.0-forge-1.16.5.jar` into your `mods` folder.
 3. Launch. Press **K** in game.
 
 ## What it does
@@ -19,13 +19,14 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 |---|---|
 | **Reads the seed automatically** | In your own world (singleplayer or LAN host) the mod reads the player's random number generator straight out of the running game. Always exact. |
 | **Solves it from two XP seeds** | As a LAN guest or on a server, two XP seeds taken one enchantment apart pin down the full 48-bit state. |
+| **Locks it from a thrown item** | On a server, after one enchantment, throwing a single item is enough: the launch velocity pins the remaining bits, so you never spend a second enchantment. |
 | **Brute-forces it the original way** | The classic cracker is still there for vanilla tables. |
 | **Predicts every slot** | Writes the real enchantments of all three slots under the enchanting table screen. |
-| **Searches for one enchantment** | Pick any enchantment a table can give, modded ones included; it picks a fitting item and lists the steps. |
+| **Searches for one enchantment** | Pick any enchantment a table can give, modded ones included; it picks a fitting item and lists the steps. Filter items by name or mod id instead of stepping through them. |
 | **Plans the manipulation** | Choose a wishlist and it works out how many items to drop, how many bookshelves to use, and which slot to click, with up to three options. |
 | **Drops the items for you** | Pick a junk item once in your inventory; the table gets a *Drop N* button that throws exactly the number the plan needs. |
 | **Reads your enchanting area** | Finds your table and every shelf around it, and outlines in the world which gaps to block to reach the count a plan needs. |
-| **Plans the anvil** | Finds the cheapest order to combine enchanted books onto an item, prior-work penalty included. |
+| **Plans the anvil** | Finds the cheapest order to combine enchanted books onto an item, prior-work penalty included. Can start from the enchanted, already-worked item in your hand. |
 | **Works with mods** | Predictions call the game's own enchanting code, so modded enchantments and items work. Apotheosis's replacement table is supported. If an unknown mod changes the table, the overlay says so instead of showing wrong numbers. |
 
 ## Keys
@@ -72,6 +73,15 @@ The jar lands in `..\output\`. If the script cannot find things automatically:
 ```
 powershell -ExecutionPolicy Bypass -File build.ps1 -Jdk "C:\path\to\jdk" -ForgeLibraries "C:\path\to\libraries"
 ```
+
+To build and verify in one step — build, run the pure-logic feature tests, and link-check the
+jar against the real Forge runtime:
+
+```
+powershell -ExecutionPolicy Bypass -File tests\verify.ps1
+```
+
+See `tests\VERIFICATION.md` for what is checked automatically and what needs a running client.
 
 You need a JDK (not just a JRE) and a Forge 1.16.5 install. See `../PROJECT-NOTES.md` for
 how the build and the tests work, and what to change when porting.

@@ -22,8 +22,8 @@ import java.util.List;
  */
 public final class EnchantCalculator {
 
-    /** 32 stacks of throwaway items is as far as the original searched. */
-    public static final int DEFAULT_MAX_THROWS = 64 * 32;
+    /** A full inventory of throwaway items: 36 slots of 64, the most a player can carry. */
+    public static final int DEFAULT_MAX_THROWS = 36 * 64;
 
     private EnchantCalculator() {
     }

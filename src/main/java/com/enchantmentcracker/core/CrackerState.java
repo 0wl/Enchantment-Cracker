@@ -43,7 +43,9 @@ public final class CrackerState {
         /** Typed in by hand. */
         MANUAL("entered by hand"),
         /** Recovered by the brute-force cracker. */
-        CRACKED("brute-forced");
+        CRACKED("brute-forced"),
+        /** One XP seed plus a thrown item's velocity, so no second enchantment was spent. */
+        VELOCITY("XP seed + throw");
 
         public final String label;
 
@@ -63,6 +65,8 @@ public final class CrackerState {
     private int tableXpSeed;
     private boolean hasPendingXpSeed;
     private int pendingXpSeed;
+    /** Items dropped when the pending XP seed was captured, so the velocity solver knows its offset. */
+    private int pendingDropBaseline;
 
     private int itemsDropped;
     private int driftSteps;
@@ -230,6 +234,7 @@ public final class CrackerState {
     public synchronized void setCrackedXpSeed(int xpSeed) {
         this.hasPendingXpSeed = true;
         this.pendingXpSeed = xpSeed;
+        this.pendingDropBaseline = itemsDropped;
         this.status = Status.AWAITING_SECOND;
         this.source = Source.CRACKED;
         this.statusMessage = "XP seed cracked. Enchant once more to get the full player seed.";
@@ -267,9 +272,10 @@ public final class CrackerState {
             staleXpSeed = false;
             hasPendingXpSeed = true;
             pendingXpSeed = xpSeed;
+            pendingDropBaseline = itemsDropped;
             status = Status.AWAITING_SECOND;
             statusMessage = "Captured XP seed " + PlayerSeed.formatXpSeed(xpSeed)
-                    + ". Enchant something once more to lock the seed.";
+                    + ". Enchant again, or throw an item, to lock the seed.";
             return;
         }
 
@@ -297,7 +303,8 @@ public final class CrackerState {
             playerSeed = PlayerSeed.UNKNOWN;
             hasPendingXpSeed = true;
             pendingXpSeed = xpSeed;
-            statusMessage = "Lost track of the RNG. Enchant once more to re-lock.";
+            pendingDropBaseline = itemsDropped;
+            statusMessage = "Lost track of the RNG. Enchant once more, or throw an item, to re-lock.";
             return;
         }
 
@@ -314,6 +321,7 @@ public final class CrackerState {
             }
             // The two seeds are not consecutive, so something else used the RNG in between.
             pendingXpSeed = xpSeed;
+            pendingDropBaseline = itemsDropped;
             statusMessage = "Those two XP seeds were not consecutive. Enchant again, "
                     + "and avoid dropping items or taking damage in between.";
             return;
@@ -321,11 +329,53 @@ public final class CrackerState {
 
         hasPendingXpSeed = true;
         pendingXpSeed = xpSeed;
+        pendingDropBaseline = itemsDropped;
         status = Status.AWAITING_SECOND;
         statusMessage = previous == xpSeed
                 ? statusMessage
                 : "Captured XP seed " + PlayerSeed.formatXpSeed(xpSeed)
-                        + ". Enchant something to capture the next one.";
+                        + ". Enchant again, or throw an item, to lock the seed.";
+    }
+
+    /**
+     * Tries to lock the seed from a thrown item's velocity, using the one XP seed already
+     * captured. This is the whole point of the velocity technique: the top 32 bits come from a
+     * single enchantment, and the throw's four {@code nextFloat} calls pick the low 16 out of
+     * {@code 2^16} candidates, so no second enchantment is spent.
+     *
+     * @return true when the seed became locked.
+     */
+    public synchronized boolean observeThrowVelocity(VelocityCracker.Velocity velocity, float yaw, float pitch) {
+        if (source == Source.DIRECT || status == Status.LOCKED || !hasPendingXpSeed) {
+            return false; // own world is already exact; a locked seed needs nothing from a throw
+        }
+        // The step offset is how many of the player's own RNG steps were spent between the enchant
+        // and this throw's first nextFloat: four per item dropped since. That count comes from the
+        // drop counter (fed by the toss/drop-key path), not from how many entities appeared near
+        // us, so a stray item on the ground cannot corrupt it. This drop may or may not be counted
+        // yet when its velocity is read, so both offsets are tried; the item picks the right one.
+        int droppedSince = Math.max(0, itemsDropped - pendingDropBaseline);
+        java.util.LinkedHashSet<Long> candidates = new java.util.LinkedHashSet<>();
+        int[] offsets = {Math.max(0, droppedSince - 1) * PlayerSeed.STEPS_PER_ITEM_DROP,
+                droppedSince * PlayerSeed.STEPS_PER_ITEM_DROP};
+        for (int steps : offsets) {
+            candidates.addAll(VelocityCracker.solveFromXpSeed(pendingXpSeed, steps, velocity, yaw, pitch));
+        }
+        if (candidates.size() == 1) {
+            playerSeed = candidates.iterator().next();
+            status = Status.LOCKED;
+            source = Source.VELOCITY;
+            hasPendingXpSeed = false;
+            driftSteps = 0;
+            statusMessage = "Locked from a thrown item's velocity — no second enchantment needed.";
+            return true;
+        }
+        if (candidates.isEmpty()) {
+            statusMessage = "That throw did not match. Stand still, look roughly level, and throw one item again.";
+        } else {
+            statusMessage = candidates.size() + " states fit that throw; throw one more item to settle it.";
+        }
+        return false;
     }
 
     /**
@@ -360,6 +410,7 @@ public final class CrackerState {
         source = Source.NONE;
         hasTableXpSeed = false;
         hasPendingXpSeed = false;
+        pendingDropBaseline = itemsDropped;
         staleXpSeed = false;
         lastSeenXpSeed = null;
         itemsDropped = 0;
@@ -384,6 +435,7 @@ public final class CrackerState {
         source = Source.NONE;
         hasTableXpSeed = false;
         hasPendingXpSeed = false;
+        pendingDropBaseline = itemsDropped;
         staleXpSeed = true;
         lastSeenXpSeed = null;
         driftSteps = 0;

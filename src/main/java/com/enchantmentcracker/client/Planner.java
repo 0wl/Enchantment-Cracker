@@ -131,6 +131,10 @@ public final class Planner {
      */
     public static List<TableSetup> setupsFor(CrackerState state) {
         TableSetup table = state.getTableSetup();
+        if (table instanceof Apotheosis.Table) {
+            // Search lower-power layouts too, the way a vanilla table searches shelf counts.
+            return Apotheosis.searchSetups(((Apotheosis.Table) table).stats());
+        }
         if (table != null && !table.isShelfBased()) {
             return Collections.singletonList(table);
         }

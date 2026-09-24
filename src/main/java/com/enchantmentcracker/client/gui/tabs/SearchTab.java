@@ -3,6 +3,7 @@ package com.enchantmentcracker.client.gui.tabs;
 import com.enchantmentcracker.client.Planner;
 import com.enchantmentcracker.client.gui.CrackerScreen;
 import com.enchantmentcracker.client.gui.CrackerTab;
+import com.enchantmentcracker.client.gui.ItemGrid;
 import com.enchantmentcracker.client.gui.Theme;
 import com.enchantmentcracker.client.gui.Widgets;
 import com.enchantmentcracker.core.CrackEnchantments;
@@ -50,6 +51,7 @@ public final class SearchTab implements CrackerTab {
     private Widgets.TextBox searchBox;
     private static String query = "";
     private int listScroll;
+    private final ItemGrid itemPicker = new ItemGrid();
 
     /** Every enchantment worth listing, in registry order, for the model it was built from. */
     private static List<String> listable = Collections.emptyList();
@@ -95,6 +97,12 @@ public final class SearchTab implements CrackerTab {
         int rx = x + listWidth + 8;
         int rw = width - listWidth - 8;
 
+        // The item picker takes over the whole right pane while it is open.
+        if (itemPicker.active) {
+            itemPicker.build(screen, rx, y, rw, height, items, this::pickItem);
+            return;
+        }
+
         // Level: < V >
         int maxLevel = maxLevelFor(selected);
         screen.addWidget(new Widgets.McButton(rx + rw - 62, y, 16, 13, "<", () -> changeLevel(-1))
@@ -102,8 +110,12 @@ public final class SearchTab implements CrackerTab {
         screen.addWidget(new Widgets.McButton(rx + rw - 16, y, 16, 13, ">", () -> changeLevel(1))
                 .tooltip("Higher level (up to " + CrackEnchantments.romanNumeral(maxLevel) + " from a table)"));
 
-        // Item: < icon >
+        // Item: [find] < icon >
         int itemY = y + 16;
+        screen.addWidget(new Widgets.McButton(rx + rw - 82, itemY + 2, 18, 13, "⌕", () -> {
+            itemPicker.open();
+            screen.rebuild();
+        }).tooltip("Search items by name or mod,", "instead of stepping with < >."));
         screen.addWidget(new Widgets.McButton(rx + rw - 62, itemY + 2, 16, 13, "<", () -> changeItem(-1))
                 .tooltip("Previous item that can get this"));
         screen.addWidget(new Widgets.McButton(rx + rw - 16, itemY + 2, 16, 13, ">", () -> changeItem(1))
@@ -246,6 +258,21 @@ public final class SearchTab implements CrackerTab {
         screen.rebuild();
     }
 
+    /** Jump to an item chosen in the picker. */
+    private void pickItem(String item) {
+        int index = items.indexOf(item);
+        if (index < 0) {
+            List<String> list = new ArrayList<>(items);
+            list.add(0, item);
+            items = list;
+            index = 0;
+        }
+        itemIndex = index;
+        level = Math.min(level, maxLevelFor(selected));
+        clearResults();
+        screen.rebuild();
+    }
+
     private void changeOption(int delta) {
         if (!results.isEmpty()) {
             option = (option + delta + results.size()) % results.size();
@@ -327,6 +354,11 @@ public final class SearchTab implements CrackerTab {
         int rx = x + listWidth + 8;
         int rw = width - listWidth - 8;
         Mc.fill(ms, rx - 5, y, rx - 4, y + height, 0xFF9E9E9E);
+
+        if (selected != null && itemPicker.active) {
+            itemPicker.render(ms, mouseX, mouseY);
+            return;
+        }
 
         if (selected == null) {
             int lineY = y + 4;
@@ -446,6 +478,10 @@ public final class SearchTab implements CrackerTab {
 
     @Override
     public void renderOverlay(MatrixStack ms, int mouseX, int mouseY) {
+        if (itemPicker.active) {
+            itemPicker.renderTooltip(screen, ms, mouseX, mouseY);
+            return;
+        }
         List<String> list = filtered();
         int top = y + 16;
         int rows = Math.max(1, (height - 16) / LIST_ROW);
@@ -469,6 +505,9 @@ public final class SearchTab implements CrackerTab {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (itemPicker.active) {
+            return itemPicker.mouseClicked(mouseX, mouseY, button);
+        }
         List<String> list = filtered();
         int top = y + 16;
         int rows = Math.max(1, (height - 16) / LIST_ROW);
@@ -487,6 +526,9 @@ public final class SearchTab implements CrackerTab {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        if (itemPicker.active) {
+            return itemPicker.mouseScrolled(mouseX, mouseY, amount);
+        }
         if (mouseX < x || mouseX >= x + listWidth) {
             return false;
         }

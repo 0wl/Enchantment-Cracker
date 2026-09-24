@@ -34,6 +34,8 @@ public final class ModSettings {
     public static int dropsPerTick = 2;
     /** The picked junk item, by id. */
     public static String junkItem = "";
+    /** Lock the seed from a thrown item's velocity, so a server needs one enchant, not two. */
+    public static boolean velocityCrack = true;
 
     private ModSettings() {
     }
@@ -60,6 +62,7 @@ public final class ModSettings {
         autoDetectArea = bool(props, "autoDetectArea", autoDetectArea);
         areaOutlines = bool(props, "areaOutlines", areaOutlines);
         tablePrediction = bool(props, "tablePrediction", tablePrediction);
+        velocityCrack = bool(props, "velocityCrack", velocityCrack);
         try {
             dropsPerTick = Math.max(1, Math.min(8, Integer.parseInt(props.getProperty("dropsPerTick", "2").trim())));
         } catch (NumberFormatException ignored) {
@@ -76,6 +79,7 @@ public final class ModSettings {
         props.setProperty("autoDetectArea", String.valueOf(autoDetectArea));
         props.setProperty("areaOutlines", String.valueOf(areaOutlines));
         props.setProperty("tablePrediction", String.valueOf(tablePrediction));
+        props.setProperty("velocityCrack", String.valueOf(velocityCrack));
         props.setProperty("dropsPerTick", String.valueOf(dropsPerTick));
         props.setProperty("junkItem", junkItem == null ? "" : junkItem);
         Path path = file();

@@ -65,9 +65,11 @@ public final class PlanTab implements CrackerTab {
 
         EnchantCalculator.Result plan = state.getPlan();
         if (ModSettings.autoDrop && plan != null && plan.needsDummy()) {
-            bx += screen.addWidget(new Widgets.McButton(bx, actionY, 70, 15, "Auto drop", ClientEvents::startPlanDrops)
+            bx += screen.addWidget(new Widgets.McButton(bx, actionY, 82, 15, "Auto drop", ClientEvents::startPlanDrops)
                     .labelFrom(() -> AutoDropper.isRunning() ? "Stop (" + AutoDropper.getRemaining() + ")"
-                            : "Drop " + CrackerState.get().getDropsRemaining())
+                            : AutoDropper.getJunkItem() == null
+                                ? "Drop " + CrackerState.get().getDropsRemaining()
+                                : "Drop " + CrackerState.get().getDropsRemaining() + " (" + AutoDropper.junkCount() + ")")
                     .selectedWhen(AutoDropper::isRunning)
                     .tooltip("Throw exactly the junk items still needed.",
                             "Pick the junk item first: open your",
@@ -263,7 +265,12 @@ public final class PlanTab implements CrackerTab {
         TableSetup setup = plan.setup;
 
         if (setup != null && !setup.isShelfBased()) {
-            steps.add("Use your enchanting table as it is: " + setup.describe() + ".");
+            TableSetup live = state.getTableSetup();
+            boolean sameAsNow = live != null && live.describe().equals(setup.describe());
+            steps.add(sameAsNow
+                    ? "Use your enchanting table as it is: " + setup.describe() + "."
+                    : "Lower your table's power to " + setup.describe()
+                            + " (block enchanting-power blocks around it).");
         } else {
             int target = plan.bookshelves;
             StringBuilder shelves = new StringBuilder("Set the table to " + target + " bookshel" + (target == 1 ? "f" : "ves"));
@@ -283,12 +290,20 @@ public final class PlanTab implements CrackerTab {
         if (plan.needsDummy()) {
             if (plan.itemsToThrow > 0) {
                 String junk = AutoDropper.getJunkItem();
-                steps.add("Drop " + plan.itemsToThrow + " junk item" + (plan.itemsToThrow == 1 ? "" : "s")
+                String dropStep = "Drop " + plan.itemsToThrow + " junk item" + (plan.itemsToThrow == 1 ? "" : "s")
                         + (plan.itemsToThrow > 63 ? " (" + plan.describeThrows() + ")" : "")
                         + (ModSettings.autoDrop ? ", or press Auto drop"
                         + (junk == null ? " (pick a junk item first)" : " (" + Mc.itemName(junk) + ")") : "")
                         + (plan == state.getPlan()
-                        ? ". Dropped so far: " + Math.min(state.getDropsSincePlan(), plan.itemsToThrow) : "") + ".");
+                        ? ". Dropped so far: " + Math.min(state.getDropsSincePlan(), plan.itemsToThrow) : "") + ".";
+                // Fold the carry-vs-need hint into the drop step itself, so this stays one entry:
+                // the Plan tab pairs each step with a done flag by index, and a stray line would
+                // slide every checkbox after it.
+                String carried = junkCarriedHint(plan.itemsToThrow);
+                if (carried != null) {
+                    dropStep += " " + carried;
+                }
+                steps.add(dropStep);
             }
             steps.add("Enchant a dummy item (a book works) in slot 1" + dummyRequirement(plan, state)
                     + ". It costs 1 level and just burns one roll.");
@@ -297,6 +312,23 @@ public final class PlanTab implements CrackerTab {
         steps.add("Enchant your " + Mc.itemName(item) + " in slot " + (plan.slot + 1)
                 + ": needs level " + plan.levelRequirement + ", costs " + plan.levelCost + ".");
         return steps;
+    }
+
+    /**
+     * "You carry H of the N junk items needed; get M more" — or null when a junk item has not
+     * been picked yet, or enough is already carried.
+     */
+    public static String junkCarriedHint(int needed) {
+        String junk = AutoDropper.getJunkItem();
+        if (junk == null || needed <= 0) {
+            return null;
+        }
+        int have = AutoDropper.junkCount();
+        String name = Mc.itemName(junk);
+        if (have >= needed) {
+            return "You carry " + have + " " + name + " (enough).";
+        }
+        return "Possible with " + needed + " " + name + ": you have " + have + ", get " + (needed - have) + " more.";
     }
 
     /** "needs level N" for the dummy, worked out for a book on the plan's table and today's XP seed. */

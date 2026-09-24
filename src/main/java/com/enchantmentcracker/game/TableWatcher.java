@@ -102,10 +102,20 @@ public final class TableWatcher {
         if (setup != null && item != null && hasLevels) {
             int[] predicted = setup.levels(xpSeed, item);
             if (!Arrays.equals(predicted, levels)) {
-                problem = "This table's numbers differ from the prediction ("
-                        + levels[0] + "/" + levels[1] + "/" + levels[2] + " vs "
-                        + predicted[0] + "/" + predicted[1] + "/" + predicted[2]
-                        + "). Another mod may change enchanting here.";
+                // The common, harmless case: the player added or removed shelves while the table
+                // was open. Vanilla only recomputes the numbers when the item changes, so the count
+                // now scanned is ahead of the numbers shown. Tell them to refresh, not that a mod
+                // is interfering.
+                int shownFor = Apotheosis.isApothContainer(container) ? -1 : matchingVanillaShelves(xpSeed, levels, item);
+                if (shownFor >= 0 && shownFor != bookshelves) {
+                    problem = "Bookshelves now read " + bookshelves + ", but the table still shows the numbers for "
+                            + shownFor + ". Take the item out and back in to refresh it.";
+                } else {
+                    problem = "This table's numbers differ from the prediction ("
+                            + levels[0] + "/" + levels[1] + "/" + levels[2] + " vs "
+                            + predicted[0] + "/" + predicted[1] + "/" + predicted[2]
+                            + "). Another mod may change enchanting here.";
+                }
             }
         }
 
@@ -176,20 +186,30 @@ public final class TableWatcher {
      * to scanning the blocks around the table the way vanilla does.
      */
     private static int resolveBookshelves(int xpSeed, int[] levels, String item) {
-        if (item != null && (levels[0] != 0 || levels[1] != 0 || levels[2] != 0)) {
-            int scanned = scanWorldBookshelves();
-            // Try what the blocks say first; several counts can share the same numbers.
-            if (scanned >= 0 && Arrays.equals(Models.vanillaTable(scanned).levels(xpSeed, item), levels)) {
-                return scanned;
-            }
-            for (int shelves = 0; shelves <= BookshelfCounter.MAX_POWER; shelves++) {
-                if (Arrays.equals(Models.vanillaTable(shelves).levels(xpSeed, item), levels)) {
-                    return shelves;
-                }
-            }
+        // The shelves actually placed around the table are the truth, and scanning them is the
+        // one reading that follows the world live — so a shelf added or taken away is picked up at
+        // once. (Back-solving from the level numbers cannot: vanilla leaves those stale until the
+        // item in the table changes, which is exactly what made the count look stuck before.)
+        int scanned = scanWorldBookshelves();
+        if (scanned >= 0) {
             return scanned;
         }
-        return scanWorldBookshelves();
+        // Only when the blocks cannot be seen (view blocked, chunk unloaded) do we recover the
+        // count from the level numbers instead.
+        return item == null ? -1 : matchingVanillaShelves(xpSeed, levels, item);
+    }
+
+    /** The vanilla shelf count that reproduces these three level numbers, or -1 if none does. */
+    private static int matchingVanillaShelves(int xpSeed, int[] levels, String item) {
+        if (item == null || (levels[0] == 0 && levels[1] == 0 && levels[2] == 0)) {
+            return -1;
+        }
+        for (int shelves = 0; shelves <= BookshelfCounter.MAX_POWER; shelves++) {
+            if (Arrays.equals(Models.vanillaTable(shelves).levels(xpSeed, item), levels)) {
+                return shelves;
+            }
+        }
+        return -1;
     }
 
     /** Counts shelves around the table the player opened, or the nearest one. */

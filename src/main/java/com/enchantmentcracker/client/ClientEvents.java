@@ -7,6 +7,7 @@ import com.enchantmentcracker.client.gui.Widgets;
 import com.enchantmentcracker.core.CrackerState;
 import com.enchantmentcracker.core.EnchantCalculator;
 import com.enchantmentcracker.core.Models;
+import com.enchantmentcracker.core.VelocityCracker;
 import com.enchantmentcracker.game.AreaTracker;
 import com.enchantmentcracker.game.AutoDropper;
 import com.enchantmentcracker.game.GameTables;
@@ -20,10 +21,12 @@ import net.minecraft.client.gui.screen.WinGameScreen;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraft.client.gui.screen.inventory.InventoryScreen;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.container.EnchantmentContainer;
 import net.minecraft.inventory.container.Slot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.vector.Vector3d;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiContainerEvent;
 import net.minecraftforge.client.event.GuiOpenEvent;
@@ -31,6 +34,7 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -61,6 +65,21 @@ public final class ClientEvents {
     private static Widgets.McButton pickButton;
     private static Screen pickButtonScreen;
 
+    /** Items we threw that are waiting to have their launch velocity read next tick. */
+    private static final java.util.List<PendingThrow> pendingThrows = new java.util.ArrayList<>();
+
+    private static final class PendingThrow {
+        final ItemEntity item;
+        final float yaw;
+        final float pitch;
+
+        PendingThrow(ItemEntity item, float yaw, float pitch) {
+            this.item = item;
+            this.yaw = yaw;
+            this.pitch = pitch;
+        }
+    }
+
     private ClientEvents() {
     }
 
@@ -73,6 +92,7 @@ public final class ClientEvents {
         }
         if (event.phase == TickEvent.Phase.START) {
             countDropKeyPresses();
+            readThrownVelocities();
             return;
         }
 
@@ -188,6 +208,70 @@ public final class ClientEvents {
         CrackerState.get().onItemDropped();
     }
 
+    /**
+     * Notices an item we just threw, so its launch velocity can be read next tick. The thrower
+     * id is not synced to the client, so our own drop is spotted by where it appears: right on
+     * top of us. Only bothered with once one XP seed is captured and there is a low 16 bits left
+     * to solve.
+     */
+    @SubscribeEvent
+    public static void onEntityJoin(EntityJoinWorldEvent event) {
+        if (!ModSettings.velocityCrack || Mc.integratedServer() != null) {
+            return; // in your own world the seed is already exact
+        }
+        if (!(event.getEntity() instanceof ItemEntity) || !event.getWorld().field_72995_K) { // isRemote
+            return;
+        }
+        PlayerEntity me = Mc.player();
+        if (me == null || CrackerState.get().getStatus() != CrackerState.Status.AWAITING_SECOND) {
+            return;
+        }
+        ItemEntity item = (ItemEntity) event.getEntity();
+        double dx = item.func_226277_ct_() - me.func_226277_ct_();
+        double dy = item.func_226278_cu_() - me.func_226278_cu_();
+        double dz = item.func_226281_cx_() - me.func_226281_cx_();
+        if (dx * dx + dy * dy + dz * dz > 4.0) {
+            return; // too far away to be the item we threw
+        }
+        // The spawn packet may set the velocity before or after the entity is added, so read it
+        // now if it is already there (freshest, before any physics); otherwise read it next tick.
+        if (!tryLockFromThrow(item, me.field_70177_z, me.field_70125_A)) {
+            Vector3d motion = item.func_213322_ci();
+            if (motion.field_72450_a == 0.0 && motion.field_72448_b == 0.0 && motion.field_72449_c == 0.0) {
+                pendingThrows.add(new PendingThrow(item, me.field_70177_z, me.field_70125_A)); // yaw, pitch
+            }
+        }
+    }
+
+    /** Reads a thrown item's launch velocity and tries to lock the seed from it. */
+    private static boolean tryLockFromThrow(ItemEntity item, float yaw, float pitch) {
+        Vector3d motion = item.func_213322_ci(); // getMotion
+        if (motion.field_72450_a == 0.0 && motion.field_72448_b == 0.0 && motion.field_72449_c == 0.0) {
+            return false; // no velocity applied yet, or the item is at rest
+        }
+        VelocityCracker.Velocity v = new VelocityCracker.Velocity(
+                motion.field_72450_a, motion.field_72448_b, motion.field_72449_c);
+        if (CrackerState.get().observeThrowVelocity(v, yaw, pitch)) {
+            Mc.chat("§a[Cracker] §fSeed locked from a thrown item's velocity — no second enchantment spent.");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * For throws whose velocity was not applied at spawn: read it at the start of the next tick,
+     * before the item's first physics step changes it.
+     */
+    private static void readThrownVelocities() {
+        if (pendingThrows.isEmpty()) {
+            return;
+        }
+        for (PendingThrow pending : pendingThrows) {
+            tryLockFromThrow(pending.item, pending.yaw, pending.pitch);
+        }
+        pendingThrows.clear();
+    }
+
     /** Remembers which enchanting table was opened, so the bookshelf scan looks at the right one. */
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -252,6 +336,7 @@ public final class ClientEvents {
         // makes a new one (with a new generator) after death or the end credits.
         if (newEntityPending) {
             newEntityPending = false;
+            AutoDropper.stop(); // a drop interrupted by death/respawn must not leave the view rotated
             CrackerState.get().onNewPlayerEntity(newEntityReason);
         }
     }

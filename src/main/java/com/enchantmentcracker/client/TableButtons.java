@@ -61,7 +61,12 @@ final class TableButtons {
             return "Auto drop";
         }
         int left = CrackerState.get().getDropsRemaining();
-        return left == 0 ? "Dropped" : "Drop " + left;
+        if (left == 0) {
+            return "Dropped";
+        }
+        // Show what is still needed against what is carried, so a short stock is obvious.
+        int have = AutoDropper.junkCount();
+        return AutoDropper.getJunkItem() == null ? "Drop " + left : "Drop " + left + " (" + have + ")";
     }
 
     static List<Widgets.McButton> buttons() {

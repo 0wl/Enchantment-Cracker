@@ -89,10 +89,10 @@ public final class EnchantTablePrediction {
         for (int slot = 0; slot < 3; slot++) {
             int rowY = top + 16 + slot * 10;
             EnchantCalculator.SlotPreview preview = slots[slot];
-            Mc.shadowText(ms, (slot + 1) + ")", left + 5, rowY, 0xFF909090);
+            Mc.shadowText(ms, (slot + 1) + ")", left + 5, rowY, 0xFFB8B8B8);
 
             if (preview.isEmpty()) {
-                Mc.shadowText(ms, "not available", left + 20, rowY, 0xFF707070);
+                Mc.shadowText(ms, "not available", left + 20, rowY, 0xFFB0B0B0);
                 continue;
             }
             String level = preview.levelRequirement + "lv";

@@ -261,6 +261,31 @@ public final class Mc {
         text(ms, s, centerX - stringWidth(s) / 2, y, color);
     }
 
+    /**
+     * True when a colour is dark enough that a black drop shadow behind it would muddy it
+     * rather than lift it off the background. Used to drop the shadow on dark text.
+     */
+    public static boolean isDarkColour(int argb) {
+        int r = (argb >> 16) & 0xFF;
+        int g = (argb >> 8) & 0xFF;
+        int b = argb & 0xFF;
+        // Rec. 601 luma; below ~40% brightness a dark shadow stops helping.
+        return (299 * r + 587 * g + 114 * b) / 1000 < 100;
+    }
+
+    /** Draws text with a shadow only when the colour is light enough to benefit from one. */
+    public static void label(MatrixStack ms, String s, int x, int y, int color) {
+        if (isDarkColour(color)) {
+            text(ms, s, x, y, color);
+        } else {
+            shadowText(ms, s, x, y, color);
+        }
+    }
+
+    public static void centeredLabel(MatrixStack ms, String s, int centerX, int y, int color) {
+        label(ms, s, centerX - stringWidth(s) / 2, y, color);
+    }
+
     public static void centeredShadowText(MatrixStack ms, String s, int centerX, int y, int color) {
         shadowText(ms, s, centerX - stringWidth(s) / 2, y, color);
     }
@@ -325,6 +350,53 @@ public final class Mc {
     /** {@code player.isSpectator()} */
     public static boolean isSpectator() {
         return player() != null && player().func_175149_v();
+    }
+
+    /** {@code player.rotationPitch} */
+    public static float playerPitch() {
+        return player() == null ? 0 : player().field_70125_A;
+    }
+
+    /** {@code player.rotationYaw} */
+    public static float playerYaw() {
+        return player() == null ? 0 : player().field_70177_z;
+    }
+
+    /**
+     * Points the player's view, prev values included so the change does not interpolate into a
+     * spin. The client sends the new rotation to the server on the next tick, GUI open or not.
+     */
+    public static void setPlayerLook(float yaw, float pitch) {
+        net.minecraft.client.entity.player.ClientPlayerEntity player = player();
+        if (player == null) {
+            return;
+        }
+        player.field_70177_z = yaw;       // rotationYaw
+        player.field_70126_B = yaw;       // prevRotationYaw
+        player.field_70125_A = pitch;     // rotationPitch
+        player.field_70127_C = pitch;     // prevRotationPitch
+    }
+
+    /** The enchantments on a stack, in this mod's id convention. */
+    public static java.util.List<com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance> enchantmentsOf(ItemStack stack) {
+        java.util.List<com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance> out = new java.util.ArrayList<>();
+        if (stack == null || stack.func_190926_b()) {
+            return out;
+        }
+        // EnchantmentHelper.getEnchantments(stack)
+        for (java.util.Map.Entry<net.minecraft.enchantment.Enchantment, Integer> entry
+                : net.minecraft.enchantment.EnchantmentHelper.func_82781_a(stack).entrySet()) {
+            String id = idOf(entry.getKey().getRegistryName());
+            if (id != null) {
+                out.add(new com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance(id, entry.getValue()));
+            }
+        }
+        return out;
+    }
+
+    /** {@code stack.getRepairCost()} — the prior-work penalty exponent already on an item. */
+    public static int repairCost(ItemStack stack) {
+        return stack == null || stack.func_190926_b() ? 0 : stack.func_82838_A(); // getRepairCost()
     }
 
     // ------------------------------------------------------------------- session

@@ -19,7 +19,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$version = "1.1.0"
+$version = "1.2.0"
 $mcVersion = "1.16.5-20210115.111550"
 $forgeVersion = "1.16.5-36.2.42"
 
@@ -169,9 +169,15 @@ $cpArgs = Join-Path $work "classpath.txt"
 [System.IO.File]::WriteAllLines($cpArgs, @("-classpath", ('"' + $classpath.Replace('\', '/') + '"')))
 
 Write-Host "Compiling $($sources.Count) files (Java 8 bytecode)..."
+# javac writes its "deprecated API" note to stderr even with -nowarn; under the script's
+# Stop preference PowerShell would turn that harmless note into a terminating error. Drop
+# to Continue for the call and judge success by the exit code alone.
+$ErrorActionPreference = "Continue"
 & $javac -source 8 -target 8 -nowarn -Xlint:-options -encoding UTF-8 `
-        "@$cpArgs" -d $classesDir "@$sourceList"
-if ($LASTEXITCODE -ne 0) { Fail "javac exited with $LASTEXITCODE" }
+        "@$cpArgs" -d $classesDir "@$sourceList" 2>&1 | ForEach-Object { Write-Host $_ }
+$javacExit = $LASTEXITCODE
+$ErrorActionPreference = "Stop"
+if ($javacExit -ne 0) { Fail "javac exited with $javacExit" }
 
 # ---------------------------------------------------------------- package
 

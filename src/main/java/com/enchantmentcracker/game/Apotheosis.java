@@ -162,6 +162,32 @@ public final class Apotheosis {
             return String.format(Locale.ROOT, "E%.1f Q%.0f%% A%.0f%%+",
                     eterna, quanta, baseArcana);
         }
+
+        /** The same stats at a different Eterna, for searching lower-power layouts. */
+        public Stats withEterna(float newEterna) {
+            return new Stats(newEterna, quanta, baseArcana, rectification, exact);
+        }
+    }
+
+    /**
+     * Table setups to search for an Apotheosis world, the way vanilla searches bookshelf counts
+     * 0..max. Eterna is the lever that a table's blocks change (like a shelf count), so this
+     * walks the current Eterna and every whole value below it down to the 2 floor; Quanta and
+     * Arcana are left as they are. The current layout comes first so a plan that needs no
+     * rebuilding wins a tie.
+     */
+    public static java.util.List<TableSetup> searchSetups(Stats current) {
+        java.util.List<TableSetup> out = new java.util.ArrayList<>();
+        if (current == null) {
+            return out;
+        }
+        out.add(new Table(current));
+        for (int eterna = (int) Math.floor(current.eterna); eterna >= 2; eterna--) {
+            if (eterna < current.eterna) {
+                out.add(new Table(current.withEterna(eterna)));
+            }
+        }
+        return out;
     }
 
     /**

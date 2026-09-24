@@ -2,6 +2,7 @@ package com.enchantmentcracker.client.gui.tabs;
 
 import com.enchantmentcracker.client.gui.CrackerScreen;
 import com.enchantmentcracker.client.gui.CrackerTab;
+import com.enchantmentcracker.client.gui.ItemGrid;
 import com.enchantmentcracker.client.gui.Theme;
 import com.enchantmentcracker.client.gui.Widgets;
 import com.enchantmentcracker.core.AnvilPlanner;
@@ -40,8 +41,12 @@ public final class AnvilTab implements CrackerTab {
     private int height;
     private int listWidth;
     private int scroll;
+    private final ItemGrid itemPicker = new ItemGrid();
 
     private static String item;
+    /** Enchantments already on the base item, and its prior anvil uses, when started from a real item. */
+    private static final List<EnchantmentInstance> existing = new ArrayList<>();
+    private static int itemWork;
     private static final Map<String, Integer> wanted = new LinkedHashMap<>();
     private static AnvilPlanner.Plan plan;
     private List<String> applicable = new ArrayList<>();
@@ -72,11 +77,24 @@ public final class AnvilTab implements CrackerTab {
         }
         wanted.keySet().removeIf(e -> !applicable.contains(e));
 
-        // Item switcher.
+        // Item switcher: [find] < >
+        screen.addWidget(new Widgets.McButton(x + listWidth - 54, y + 2, 16, 13, "⌕", () -> {
+            itemPicker.open();
+            screen.rebuild();
+        }).tooltip("Search items by name or mod,", "instead of stepping with < >."));
         screen.addWidget(new Widgets.McButton(x + listWidth - 36, y + 2, 16, 13, "<", () -> changeItem(-1))
                 .tooltip("Previous item"));
         screen.addWidget(new Widgets.McButton(x + listWidth - 18, y + 2, 16, 13, ">", () -> changeItem(1))
                 .tooltip("Next item"));
+
+        // The item picker takes over the right pane while open.
+        if (itemPicker.active) {
+            int rx = x + listWidth + 8;
+            int rw = width - listWidth - 8;
+            itemPicker.build(screen, rx, y, rw, height, pickableItems(), this::pickItem);
+            replan();
+            return;
+        }
 
         // Enchantment rows.
         int listY = y + LIST_TOP;
@@ -94,7 +112,7 @@ public final class AnvilTab implements CrackerTab {
             wanted.clear();
             replan();
         }).tooltip("Deselect everything."));
-        screen.addWidget(new Widgets.McButton(x + 54, y + height - 16, 90, 15, "From wishlist", () -> {
+        screen.addWidget(new Widgets.McButton(x + 54, y + height - 16, 84, 15, "From wishlist", () -> {
             wanted.clear();
             for (EnchantmentInstance wish : CrackerState.get().getWanted()) {
                 if (applicable.contains(wish.enchantment)) {
@@ -103,6 +121,10 @@ public final class AnvilTab implements CrackerTab {
             }
             replan();
         }).tooltip("Copy the Calc tab's wanted enchantments."));
+        screen.addWidget(new Widgets.McButton(x + 142, y + height - 16, 78, 15, "From held", this::fromHeld)
+                .tooltip("Start from the item in your hand:",
+                        "keep its enchantments and prior anvil uses,",
+                        "and plan the new books on top."));
 
         // Find buttons next to the books in the result.
         if (plan != null && plan.possible) {
@@ -142,14 +164,57 @@ public final class AnvilTab implements CrackerTab {
     }
 
     private void changeItem(int delta) {
-        List<String> items = new ArrayList<>(Models.get().enchantableItems());
-        items.remove(CrackItems.BOOK);
+        List<String> items = pickableItems();
         if (items.isEmpty()) {
             return;
         }
         int index = items.indexOf(item);
         index = (index + delta + items.size()) % items.size();
-        item = items.get(Math.max(0, index));
+        setBaseItem(items.get(Math.max(0, index)));
+        screen.rebuild();
+    }
+
+    /** Every item the anvil can start from (a book is never the base item). */
+    private static List<String> pickableItems() {
+        List<String> items = new ArrayList<>(Models.get().enchantableItems());
+        items.remove(CrackItems.BOOK);
+        return items;
+    }
+
+    private void pickItem(String picked) {
+        setBaseItem(picked);
+        screen.rebuild();
+    }
+
+    /** Switches the base item and forgets any pre-existing enchantments/prior work. */
+    private static void setBaseItem(String picked) {
+        item = picked;
+        existing.clear();
+        itemWork = 0;
+    }
+
+    /** Starts from the item in the player's hand, keeping its enchantments and prior anvil uses. */
+    private void fromHeld() {
+        if (Mc.player() == null) {
+            return;
+        }
+        net.minecraft.item.ItemStack held = Mc.heldStack();
+        String id = Mc.idOf(held.func_77973_b()); // getItem()
+        if (held.func_190926_b() || id == null) {
+            return;
+        }
+        item = id;
+        itemWork = Mc.repairCost(held);
+        existing.clear();
+        existing.addAll(Mc.enchantmentsOf(held));
+        // Drop any wanted books that the held item already has at the same or higher level.
+        for (EnchantmentInstance e : existing) {
+            Integer want = wanted.get(e.enchantment);
+            if (want != null && want <= e.level) {
+                wanted.remove(e.enchantment);
+            }
+        }
+        replan();
         screen.rebuild();
     }
 
@@ -167,7 +232,7 @@ public final class AnvilTab implements CrackerTab {
         for (Map.Entry<String, Integer> entry : wanted.entrySet()) {
             books.add(new EnchantmentInstance(entry.getKey(), entry.getValue()));
         }
-        plan = AnvilPlanner.plan(Models.get(), item, Mc.itemName(item), 0, books,
+        plan = AnvilPlanner.plan(Models.get(), item, Mc.itemName(item), itemWork, existing, books,
                 book -> Mc.enchantmentName(book.enchantment, book.level), cap());
     }
 
@@ -175,7 +240,19 @@ public final class AnvilTab implements CrackerTab {
     public void render(MatrixStack ms, int mouseX, int mouseY, float partialTicks) {
         Theme.inset(ms, x, y, 18, 18);
         Mc.drawItem(Mc.stackOf(item), x + 1, y + 1);
-        Mc.text(ms, Mc.trim(Mc.itemName(item), listWidth - 60), x + 21, y + 5, Theme.TEXT_TITLE);
+        Mc.text(ms, Mc.trim(Mc.itemName(item), listWidth - 78), x + 21, y + 5, Theme.TEXT_TITLE);
+        if (!existing.isEmpty() || itemWork > 0) {
+            // A blue mark: this base item is a real one carrying enchantments / prior anvil work.
+            Mc.text(ms, "✦", x + listWidth - 66, y + 5, 0xFF3B6BC6);
+        }
+
+        if (itemPicker.active) {
+            int rx = x + listWidth + 8;
+            itemPicker.render(ms, mouseX, mouseY);
+            Mc.fill(ms, rx - 5, y, rx - 4, y + height, 0xFF9E9E9E);
+            return;
+        }
+
         Mc.text(ms, "Pick enchantments & levels:", x, y + 21, Theme.TEXT_MUTED);
 
         int listY = y + LIST_TOP;
@@ -245,7 +322,22 @@ public final class AnvilTab implements CrackerTab {
     }
 
     @Override
+    public void renderOverlay(MatrixStack ms, int mouseX, int mouseY) {
+        if (itemPicker.active) {
+            itemPicker.renderTooltip(screen, ms, mouseX, mouseY);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return itemPicker.active && itemPicker.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        if (itemPicker.active) {
+            return itemPicker.mouseScrolled(mouseX, mouseY, amount);
+        }
         if (mouseX >= x + listWidth) {
             return false;
         }
@@ -261,6 +353,21 @@ public final class AnvilTab implements CrackerTab {
 
     @Override
     public String statusLine() {
+        if (!existing.isEmpty() || itemWork > 0) {
+            StringBuilder sb = new StringBuilder("Base item already has ");
+            if (existing.isEmpty()) {
+                sb.append("no enchantments");
+            } else {
+                for (int i = 0; i < existing.size(); i++) {
+                    EnchantmentInstance e = existing.get(i);
+                    sb.append(i == 0 ? "" : ", ").append(Mc.enchantmentName(e.enchantment, e.level));
+                }
+            }
+            if (itemWork > 0) {
+                sb.append(" (+").append(itemWork).append(" prior anvil use").append(itemWork == 1 ? "" : "s").append(")");
+            }
+            return sb.append(".").toString();
+        }
         if (plan != null && plan.possible) {
             return "Left slot first, right slot second. The item ends with " + plan.finalWork
                     + " anvil use" + (plan.finalWork == 1 ? "" : "s") + " on it.";

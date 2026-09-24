@@ -90,17 +90,27 @@ public final class AnvilPlanner {
         return Math.max(1, model.anvilMultiplier(book.enchantment) / 2) * book.level;
     }
 
+    /** Overload for a clean item straight out of the enchanting table: no prior work, no enchantments. */
+    public static Plan plan(EnchantModel model, String item, String itemLabel, int itemWork,
+                            List<EnchantmentInstance> books, java.util.function.Function<EnchantmentInstance, String> namer,
+                            int cap) {
+        return plan(model, item, itemLabel, itemWork, Collections.emptyList(), books, namer, cap);
+    }
+
     /**
      * @param item       what the books end up on; its enchantability is irrelevant here
-     * @param itemWork   anvil uses already on the item (0 for one fresh out of the table)
-     * @param books      one book per enchantment, all different and mutually compatible
+     * @param itemWork   anvil uses already on the item (0 for one fresh out of the table); adds
+     *                   the item's own prior-work penalty to every step that touches it
+     * @param existing   enchantments already on the item, which the books must not clash with and
+     *                   which a book of the same enchantment may only raise, never repeat
+     * @param books      one book per enchantment to add, all different and mutually compatible
      * @param namer      turns a book into a readable label
      * @param cap        a step costing this much or more is refused: {@link #TOO_EXPENSIVE} in
      *                   vanilla survival, {@code Integer.MAX_VALUE} where a mod lifts the cap
      */
     public static Plan plan(EnchantModel model, String item, String itemLabel, int itemWork,
-                            List<EnchantmentInstance> books, java.util.function.Function<EnchantmentInstance, String> namer,
-                            int cap) {
+                            List<EnchantmentInstance> existing, List<EnchantmentInstance> books,
+                            java.util.function.Function<EnchantmentInstance, String> namer, int cap) {
         int n = books.size();
         if (n == 0) {
             return Plan.impossible("Pick at least one enchantment.");
@@ -117,6 +127,17 @@ public final class AnvilPlanner {
                 EnchantmentInstance b = books.get(j);
                 if (a.enchantment.equals(b.enchantment) || !model.compatible(a.enchantment, b.enchantment)) {
                     return Plan.impossible(namer.apply(a) + " and " + namer.apply(b) + " cannot share an item.");
+                }
+            }
+            for (EnchantmentInstance e : existing) {
+                if (a.enchantment.equals(e.enchantment)) {
+                    if (a.level <= e.level) {
+                        return Plan.impossible(itemLabel + " already has " + namer.apply(e)
+                                + "; pick a higher level to upgrade it.");
+                    }
+                } else if (!model.compatible(a.enchantment, e.enchantment)) {
+                    return Plan.impossible(namer.apply(a) + " clashes with " + namer.apply(e)
+                            + " already on " + itemLabel + ".");
                 }
             }
         }

@@ -202,8 +202,12 @@ public final class CrackerScreen extends McScreen {
         for (Tab tab : visible) {
             Tab target = tab;
             ItemStack icon = Mc.stackOf(tab.iconItem);
-            addWidget(new Widgets.TabButton(x, tabY, tabWidth, tabHeight, tab.label, icon,
-                    () -> current == target, () -> switchTo(target)));
+            Widgets.TabButton button = new Widgets.TabButton(x, tabY, tabWidth, tabHeight, tab.label, icon,
+                    () -> current == target, () -> switchTo(target));
+            if (tab == Tab.PLAN) {
+                button.compassNeedle();
+            }
+            addWidget(button);
             x += tabWidth + gap;
         }
 
@@ -299,6 +303,20 @@ public final class CrackerScreen extends McScreen {
     @Override
     protected boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
         if (tabs.get(current).keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
+        // Escape first drops focus from a text box you were typing in (a filter, a seed field);
+        // pressed again with nothing focused, it closes the window.
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (isTyping()) {
+                for (Widget widget : widgets()) {
+                    if (widget instanceof Widgets.TextBox) {
+                        ((Widgets.TextBox) widget).func_146195_b(false); // setFocused(false)
+                    }
+                }
+                return true;
+            }
+            close();
             return true;
         }
         // Tab / Shift-Tab flips between pages, like a real tabbed dialog.
