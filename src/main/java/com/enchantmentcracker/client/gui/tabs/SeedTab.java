@@ -276,7 +276,6 @@ public final class SeedTab implements CrackerTab {
         Mc.text(ms, "XP 2", x + 88, y + 50, Theme.TEXT_DARK);
         Mc.text(ms, "By hand", x, y + 68, Theme.TEXT_DARK);
 
-        separator(ms, y + 84);
         Mc.text(ms, "Brute force from table readings", x, y + 79, Theme.TEXT_TITLE);
         Mc.text(ms, "Shelves", x, y + 94, Theme.TEXT_DARK);
         Mc.text(ms, "1", x + 76, y + 94, Theme.TEXT_DARK);
@@ -305,10 +304,6 @@ public final class SeedTab implements CrackerTab {
                 break; // one line; the rest is in the status strip
             }
         }
-    }
-
-    private void separator(MatrixStack ms, int lineY) {
-        Mc.fill(ms, x, lineY, x + width, lineY + 1, 0xFF9E9E9E);
     }
 
     @Override

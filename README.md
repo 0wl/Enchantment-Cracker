@@ -10,7 +10,7 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 ## Install
 
 1. Install **Forge 1.16.5** (36.x).
-2. Drop `enchcracker-1.2.3-forge-1.16.5.jar` into your `mods` folder.
+2. Drop `enchcracker-1.2.4-forge-1.16.5.jar` into your `mods` folder.
 3. Launch. Press **K** in game.
 
 ## What it does
