@@ -1,0 +1,13 @@
+modLoader = "javafml"
+loaderVersion = "[36,)"
+license = "MIT"
+[[mods]]
+    modId = "enchcrackertest"
+    version = "1.0"
+    displayName = "Enchantment Cracker self test"
+[[dependencies.enchcrackertest]]
+    modId = "enchcracker"
+    mandatory = true
+    versionRange = "[1.1.0,)"
+    ordering = "AFTER"
+    side = "CLIENT"

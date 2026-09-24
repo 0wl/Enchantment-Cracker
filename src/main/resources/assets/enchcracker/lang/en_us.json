@@ -1,0 +1,9 @@
+{
+  "key.categories.enchcracker": "Enchantment Cracker",
+  "key.enchcracker.open": "Open Cracker GUI",
+  "key.enchcracker.capture": "Read Enchanting Table",
+  "key.enchcracker.quickplan": "Open Calculator (from table)",
+  "key.enchcracker.pickjunk": "Pick auto-drop item (hover a slot)",
+  "key.enchcracker.autodrop": "Auto-drop items for the plan",
+  "key.enchcracker.search": "Open Enchantment Search"
+}

@@ -1,0 +1,35 @@
+modLoader = "javafml"
+loaderVersion = "[36,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/Earthcomputer/EnchantmentCracker/issues"
+
+[[mods]]
+    modId = "enchcracker"
+    version = "1.1.0"
+    displayName = "Enchantment Cracker"
+    displayURL = "https://github.com/Earthcomputer/clientcommands/wiki/cenchant"
+    credits = "Original tool and technique by Earthcomputer; speed and UI work by Hexicube."
+    authors = "Earthcomputer, Hexicube (Forge 1.16.5 in-game port)"
+    description = '''
+Cracks the enchanting table's XP seed and tells you exactly how to get the enchantment you want.
+
+Press K for the main window, or use the buttons that appear beside the vanilla enchanting table.
+In your own world the seed is read straight from the game, so there is nothing to type in. Elsewhere
+the mod solves it from two XP seeds, or brute-forces it the original way.
+
+Client side only. Intended for singleplayer and offline use.
+'''
+
+[[dependencies.enchcracker]]
+    modId = "forge"
+    mandatory = true
+    versionRange = "[36,)"
+    ordering = "NONE"
+    side = "CLIENT"
+
+[[dependencies.enchcracker]]
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "[1.16.5,1.17)"
+    ordering = "NONE"
+    side = "CLIENT"
