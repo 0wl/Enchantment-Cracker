@@ -35,10 +35,13 @@ pure-logic feature tests + link check) and the in-game checklist in `tests\VERIF
     was applied to `SelfTest.java`, so the end-to-end test drops with Q and checks the stages
     advance to DONE. Still worth a real-game pass (see `tests\VERIFICATION.md`).
 - [x] Auto drop: items should land in front of the player, not at their feet.
-  - Inventory-throw drops (the mechanism auto-drop uses) already scatter in a random horizontal
-    direction server-side, so they do not pile at your feet. 1.2.0 tried to force the view level
-    for this; that fought the camera after closing the menu, so 1.2.1 removed it — the throws
-    scatter on their own.
+  - 1.2.2: auto-drop closes the open screen first (so singleplayer is not paused — the enchanting
+    table/inventory screens pause it — and the view is ours), looks level, and in your own world
+    uses the look-direction "press Q" drop so items fly forward; the view is restored when done.
+    On a real server it keeps the client-simulated inventory throw (which is counted for seed
+    tracking; that throw scatters randomly server-side, but the seed stays exact). The 1.2.0/1.2.1
+    attempts (force pitch over the paused screen, then remove it) did not work because the screen
+    pause froze the drops.
 - [x] Make Escape close the cracker menu.
 - [x] Crack the player RNG from dropped-item velocities, so a server seed locks without spending two enchantments.
   - `VelocityCracker`: one captured XP seed gives the top 32 bits; a thrown item's velocity picks

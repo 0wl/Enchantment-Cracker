@@ -19,7 +19,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$version = "1.2.1"
+$version = "1.2.2"
 $mcVersion = "1.16.5-20210115.111550"
 $forgeVersion = "1.16.5-36.2.42"
 

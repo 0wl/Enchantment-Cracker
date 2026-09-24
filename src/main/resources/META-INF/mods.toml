@@ -5,7 +5,7 @@ issueTrackerURL = "https://github.com/Earthcomputer/EnchantmentCracker/issues"
 
 [[mods]]
     modId = "enchcracker"
-    version = "1.2.1"
+    version = "1.2.2"
     displayName = "Enchantment Cracker"
     displayURL = "https://github.com/Earthcomputer/clientcommands/wiki/cenchant"
     credits = "Original tool and technique by Earthcomputer; speed and UI work by Hexicube."

@@ -16,11 +16,12 @@ import net.minecraft.item.ItemStack;
  * item works, modded ones included. The slot then shimmers with the enchantment glint for a
  * few seconds to confirm the choice.
  *
- * <p>Each drop is an ordinary "throw one item" inventory click ({@code ClickType.THROW}),
- * the same thing pressing Q over a slot does, sent through the normal container, so it works
- * in singleplayer, on LAN and on servers alike. The server spends four steps of your
- * generator per item thrown, which is what the plan counts on. The drop counter itself is
- * fed by the game's own toss events, so these drops are counted exactly like manual ones.
+ * <p>Dropping first closes any open screen, so singleplayer is not paused and the view is ours,
+ * then it looks level and throws the junk forward, and restores the view when finished. In your
+ * own world (the seed is re-read from the server each tick, so nothing needs counting) it uses
+ * the look-direction "press Q" drop, so the items fly ahead of you instead of scattering at your
+ * feet. On a real server that programmatic drop is not reported back to us, so there it falls
+ * back to the inventory throw, which is client-simulated and counted for the seed tracking.
  */
 public final class AutoDropper {
 
@@ -38,6 +39,12 @@ public final class AutoDropper {
     private static int dropped;
     private static int perTick = 2;
     private static String message = "";
+
+    /** The view and hotbar slot saved before dropping, restored when it finishes or stops. */
+    private static boolean stateSaved;
+    private static float savedYaw;
+    private static float savedPitch;
+    private static int savedHotbar;
 
     private AutoDropper() {
     }
@@ -143,6 +150,16 @@ public final class AutoDropper {
         }
         remaining = count;
         dropped = 0;
+        // Close any open screen so singleplayer is not paused (the enchanting-table and inventory
+        // screens pause it) and the view is under our control; then face level, drop forward, and
+        // put the view back when done.
+        Mc.openScreen(null);
+        if (!stateSaved && Mc.player() != null) {
+            savedYaw = Mc.playerYaw();
+            savedPitch = Mc.playerPitch();
+            savedHotbar = Mc.selectedHotbar();
+            stateSaved = true;
+        }
         message = "Dropping " + count + " " + Mc.itemName(junkItem) + "...";
     }
 
@@ -151,6 +168,23 @@ public final class AutoDropper {
             message = "Stopped after " + dropped + ".";
         }
         remaining = 0;
+        restore();
+    }
+
+    /** Puts the view and selected hotbar slot back the way they were before dropping. */
+    private static void restore() {
+        if (stateSaved) {
+            Mc.setPlayerLook(savedYaw, savedPitch);
+            Mc.setSelectedHotbar(savedHotbar);
+            stateSaved = false;
+        }
+    }
+
+    private static void ranOut() {
+        message = "Ran out of " + Mc.itemName(junkItem) + " with " + remaining + " still to drop.";
+        Mc.chat("§c[Cracker] " + message);
+        remaining = 0;
+        restore();
     }
 
     /** Called every client tick. */
@@ -158,32 +192,97 @@ public final class AutoDropper {
         if (remaining <= 0 || Mc.player() == null) {
             return;
         }
+        // Wait until the screen is closed (start() closes it) and the cursor is empty.
+        if (Mc.currentScreen() != null || !Mc.cursorStack().func_190926_b()) {
+            return;
+        }
         Container container = Mc.openContainer();
         if (container == null) {
             return;
         }
-        // THROW only works with nothing on the cursor; wait for the player to put it down.
-        if (!Mc.cursorStack().func_190926_b()) {
-            message = "Put down the item on your cursor to keep dropping.";
-            return;
-        }
+        // Keep looking level and forward while dropping, so thrown items travel ahead of you.
+        Mc.setPlayerLook(Mc.playerYaw(), 0.0F);
+
+        // In your own world the seed is re-read from the server every tick, so we can drop in the
+        // look direction (forward) with the "press Q" drop. On a real server that drop is not
+        // counted for us, so there we keep the inventory throw, which is client-simulated and
+        // counted (it scatters randomly, but the seed stays tracked).
+        boolean ownWorld = ServerRng.isAvailable();
         for (int i = 0; i < perTick && remaining > 0; i++) {
-            Slot slot = findJunkSlot(container);
-            if (slot == null) {
-                message = "Ran out of " + Mc.itemName(junkItem) + " with " + remaining + " still to drop.";
-                Mc.chat("§c[Cracker] " + message);
-                remaining = 0;
-                return;
+            if (ownWorld) {
+                if (!ensureJunkHeld(container)) {
+                    ranOut();
+                    return;
+                }
+                if (!isJunkStack(Mc.heldStack())) {
+                    break; // a refill swap has not applied yet; try again next tick
+                }
+                Mc.dropSelected(false); // drop one, in the look direction
+            } else {
+                Slot slot = findJunkSlot(container);
+                if (slot == null) {
+                    ranOut();
+                    return;
+                }
+                Mc.windowClick(container.field_75152_c, slot.field_75222_d, 0, ClickType.THROW);
             }
-            // playerController.windowClick(windowId, slotNumber, 0, THROW, player): drop one item
-            Mc.windowClick(container.field_75152_c, slot.field_75222_d, 0, ClickType.THROW);
             remaining--;
             dropped++;
         }
         if (remaining == 0) {
             message = "Dropped " + dropped + " " + Mc.itemName(junkItem) + ".";
             Mc.chat("§a[Cracker] " + message);
+            restore();
         }
+    }
+
+    /**
+     * Makes sure the selected hotbar slot holds junk, so the look-direction drop throws junk:
+     * selects a hotbar slot that already has it, or swaps a stack up from the main inventory.
+     *
+     * @return false only when there is no junk left anywhere
+     */
+    private static boolean ensureJunkHeld(Container container) {
+        if (isJunkStack(Mc.heldStack())) {
+            return true;
+        }
+        int hotbar = findHotbarJunk(container);
+        if (hotbar >= 0) {
+            Mc.setSelectedHotbar(hotbar);
+            return true;
+        }
+        Slot fromInventory = findMainInventoryJunk(container);
+        if (fromInventory == null) {
+            return false;
+        }
+        // SWAP the main-inventory junk stack into the selected hotbar slot.
+        Mc.windowClick(container.field_75152_c, fromInventory.field_75222_d, Mc.selectedHotbar(), ClickType.SWAP);
+        return true;
+    }
+
+    private static boolean isJunkStack(ItemStack stack) {
+        return stack != null && !stack.func_190926_b() && junkItem != null
+                && junkItem.equals(Mc.idOf(stack.func_77973_b()));
+    }
+
+    /** Hotbar slot index (0-8) that holds junk, or -1. */
+    private static int findHotbarJunk(Container container) {
+        for (Slot slot : container.field_75151_b) {
+            if (isJunk(slot) && slot.getSlotIndex() >= 0 && slot.getSlotIndex() < 9) {
+                return slot.getSlotIndex();
+            }
+        }
+        return -1;
+    }
+
+    /** A main-inventory (non-hotbar) slot holding junk, or null. */
+    private static Slot findMainInventoryJunk(Container container) {
+        for (Slot slot : container.field_75151_b) {
+            if (isJunk(slot) && slot.getSlotIndex() >= 9 && slot.getSlotIndex() < 36) {
+                return slot;
+            }
+        }
+        return null;
     }
 
     private static Slot findJunkSlot(Container container) {

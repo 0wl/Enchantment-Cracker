@@ -386,6 +386,24 @@ public final class Mc {
         player.field_70127_C = pitch;     // prevRotationPitch
     }
 
+    /** {@code player.inventory.currentItem} — the selected hotbar slot (0-8). */
+    public static int selectedHotbar() {
+        return player() == null ? 0 : player().field_71071_by.field_70461_c;
+    }
+
+    public static void setSelectedHotbar(int slot) {
+        if (player() != null && slot >= 0 && slot < 9) {
+            player().field_71071_by.field_70461_c = slot;
+        }
+    }
+
+    /** {@code clientPlayer.drop(dropEntireStack)} — drops the selected item in the look direction. */
+    public static void dropSelected(boolean entireStack) {
+        if (player() != null) {
+            player().func_225609_n_(entireStack);
+        }
+    }
+
     /** The enchantments on a stack, in this mod's id convention. */
     public static java.util.List<com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance> enchantmentsOf(ItemStack stack) {
         java.util.List<com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance> out = new java.util.ArrayList<>();
