@@ -2,58 +2,55 @@ package com.enchantmentcracker.client.gui;
 
 import com.enchantmentcracker.game.Mc;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import net.minecraft.util.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Minecraft-native drawing: the same greys, bevels and button texture the vanilla
- * screens use, so the cracker does not look like a foreign window bolted onto the game.
+ * A self-contained dark theme, drawn with plain fills so it stays crisp at every scale and any
+ * size. Everything else in the GUI takes its colours from here, so the palette lives in one place.
  *
- * <p>The panels are drawn rather than blitted from a texture, using the exact colours
- * out of {@code gui/container/generic_54.png}, which keeps the GUI crisp at every scale
- * and lets it be any size.
+ * <p>The panel is dark, the text is light and the status colours are chosen to stand out on the
+ * dark background, which is what keeps every label — greens, ambers, greys — readable.
  */
 public final class Theme {
 
-    /** Vanilla's widgets sheet — the button texture lives here at v=46/66/86. */
-    public static final ResourceLocation WIDGETS =
-            new ResourceLocation("minecraft", "textures/gui/widgets.png");
-
-    // Container panel colours, straight out of the vanilla inventory texture.
-    public static final int PANEL        = 0xFFC6C6C6;
-    public static final int PANEL_LIGHT  = 0xFFFFFFFF;
-    public static final int PANEL_SHADE  = 0xFF555555;
+    // Container panel: a raised dark card with a lighter top-left bevel and darker bottom-right.
+    public static final int PANEL        = 0xFF23262E;
+    public static final int PANEL_LIGHT  = 0xFF3A3E48;
+    public static final int PANEL_SHADE  = 0xFF14161B;
     public static final int BORDER       = 0xFF000000;
 
-    // Inset / slot colours.
-    public static final int SLOT         = 0xFF8B8B8B;
-    public static final int SLOT_SHADE   = 0xFF373737;
+    // Sunken inset (lists, previews, item wells): darker than the panel.
+    public static final int SLOT         = 0xFF14161D;
+    public static final int SLOT_SHADE   = 0xFF0A0B0F;
 
-    // Text. Light, and drawn with a drop shadow (see Mc.text), so it reads on the grey panel:
-    // dark text there needed either no shadow or perfect contrast; white-on-shadow is legible
-    // on grey, lighter greys and the dark overlay alike.
-    public static final int TEXT_DARK    = 0xFFEAEAEA;
-    public static final int TEXT_MUTED   = 0xFFBFBFBF;
-    public static final int TEXT_LIGHT   = 0xFFE0E0E0;
+    // Text, light on the dark panel (still drawn with a subtle shadow via Mc.text).
+    public static final int TEXT_DARK    = 0xFFD6D9E0;
+    public static final int TEXT_MUTED   = 0xFF9BA2AE;
+    public static final int TEXT_LIGHT   = 0xFFECEEF2;
     public static final int TEXT_TITLE   = 0xFFFFFFFF;
 
-    // Status colours: lightened so they stay readable as light-on-shadow text.
-    public static final int GOOD         = 0xFF66DD55;
-    public static final int WARN         = 0xFFFFC24D;
-    public static final int BAD          = 0xFFFF6B6B;
-    public static final int ACCENT       = 0xFF6D8CFF;
+    // Status colours, tuned to read on the dark panel.
+    public static final int GOOD         = 0xFF5FD98A;
+    public static final int WARN         = 0xFFF0B24A;
+    public static final int BAD          = 0xFFF0655C;
+    public static final int ACCENT       = 0xFF7E9CFF;
 
-    // Dark tooltip-style panel, for blocks of text.
-    public static final int DARK_BG      = 0xF0100010;
-    public static final int DARK_EDGE_1  = 0xFF5000FF;
-    public static final int DARK_EDGE_2  = 0xFF28007F;
+    // Button fills, by state (0 disabled, 1 normal, 2 hovered): background, top-left, bottom-right.
+    private static final int[] BTN_BG    = {0xFF2A2C31, 0xFF33373F, 0xFF3C5A93};
+    private static final int[] BTN_LIGHT = {0xFF34363C, 0xFF474C57, 0xFF5B7EBE};
+    private static final int[] BTN_SHADE = {0xFF1D1E22, 0xFF1F212A, 0xFF243A66};
+
+    // Dark tooltip / overlay panel with a blue gradient edge, matching the accent.
+    public static final int DARK_BG      = 0xF00E1016;
+    public static final int DARK_EDGE_1  = 0xFF3A5AC8;
+    public static final int DARK_EDGE_2  = 0xFF1E2E66;
 
     private Theme() {
     }
 
-    /** The classic raised container panel: light grey, white top-left bevel, dark bottom-right. */
+    /** The raised container panel: dark card, lighter top-left bevel, darker bottom-right. */
     public static void panel(MatrixStack ms, int x, int y, int w, int h) {
         Mc.outline(ms, x - 1, y - 1, w + 2, h + 2, BORDER);
         Mc.fill(ms, x, y, x + w, y + h, PANEL);
@@ -63,7 +60,7 @@ public final class Theme {
         Mc.fill(ms, x + w - 2, y + 2, x + w, y + h, PANEL_SHADE);
     }
 
-    /** A sunken area, drawn like an inventory slot. */
+    /** A sunken area, darker than the panel with an inset bevel. */
     public static void inset(MatrixStack ms, int x, int y, int w, int h) {
         Mc.fill(ms, x, y, x + w, y + h, SLOT);
         Mc.fill(ms, x, y, x + w - 1, y + 1, SLOT_SHADE);
@@ -72,7 +69,7 @@ public final class Theme {
         Mc.fill(ms, x + w - 1, y + 1, x + w, y + h, PANEL_LIGHT);
     }
 
-    /** Tooltip-style dark panel with the purple gradient edge. */
+    /** Tooltip-style panel: near-black with a blue gradient edge. */
     public static void darkPanel(MatrixStack ms, int x, int y, int w, int h) {
         Mc.fill(ms, x, y, x + w, y + h, DARK_BG);
         Mc.fill(ms, x, y, x + w, y + 1, DARK_EDGE_2);
@@ -82,29 +79,18 @@ public final class Theme {
     }
 
     /**
-     * The vanilla button texture, sliced into four so it works at any size from 8 to 20
-     * pixels tall rather than only the standard 20.
+     * A dark button, drawn (not textured) so it matches the theme and works at any size.
      *
      * @param state 0 = disabled, 1 = normal, 2 = hovered
      */
     public static void buttonBackground(MatrixStack ms, int x, int y, int w, int h, int state) {
-        Mc.bindTexture(WIDGETS);
-        Mc.resetColour();
-        Mc.enableBlend();
-
-        int v = 46 + state * 20;
-        int leftW = Math.min(w / 2, 100);
-        int rightW = w - leftW;
-        int topH = Math.min(h / 2, 10);
-        int bottomH = h - topH;
-        // The sheet's button is 200x20 at (0, v); take the left/top from its start and the
-        // right/bottom from its end so the rounded corners survive any width or height.
-        Mc.blit256(ms, x, y, 0, v, leftW, topH);
-        Mc.blit256(ms, x + leftW, y, 200 - rightW, v, rightW, topH);
-        Mc.blit256(ms, x, y + topH, 0, v + 20 - bottomH, leftW, bottomH);
-        Mc.blit256(ms, x + leftW, y + topH, 200 - rightW, v + 20 - bottomH, rightW, bottomH);
-
-        Mc.disableBlend();
+        int s = state < 0 ? 0 : Math.min(state, 2);
+        Mc.fill(ms, x, y, x + w, y + h, BTN_BG[s]);
+        Mc.fill(ms, x, y, x + w - 1, y + 1, BTN_LIGHT[s]);
+        Mc.fill(ms, x, y, x + 1, y + h - 1, BTN_LIGHT[s]);
+        Mc.fill(ms, x + 1, y + h - 1, x + w, y + h, BTN_SHADE[s]);
+        Mc.fill(ms, x + w - 1, y + 1, x + w, y + h, BTN_SHADE[s]);
+        Mc.outline(ms, x, y, w, h, BORDER);
     }
 
     /** Greedy word wrap. Long words are hard-broken so nothing ever runs off the panel. */

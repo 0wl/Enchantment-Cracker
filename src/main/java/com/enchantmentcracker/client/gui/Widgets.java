@@ -206,9 +206,10 @@ public final class Widgets {
             boolean on = selected.get();
 
             Mc.outline(ms, x - 1, y - 1, w + 2, h + 2, Theme.BORDER);
-            Mc.fill(ms, x, y, x + w, y + h, on ? Theme.PANEL : 0xFF9A9A9A);
-            Mc.fill(ms, x, y, x + w - 1, y + 1, on ? Theme.PANEL_LIGHT : 0xFFB4B4B4);
-            Mc.fill(ms, x, y, x + 1, y + h, on ? Theme.PANEL_LIGHT : 0xFFB4B4B4);
+            // Selected tab sits at panel level; unselected tabs are recessed (darker).
+            Mc.fill(ms, x, y, x + w, y + h, on ? Theme.PANEL : 0xFF181A20);
+            Mc.fill(ms, x, y, x + w - 1, y + 1, on ? Theme.PANEL_LIGHT : 0xFF2E313A);
+            Mc.fill(ms, x, y, x + 1, y + h, on ? Theme.PANEL_LIGHT : 0xFF2E313A);
             if (!on) {
                 // Unselected tabs sit a shade lower and keep their bottom edge.
                 Mc.fill(ms, x, y + h - 1, x + w, y + h, Theme.PANEL_SHADE);

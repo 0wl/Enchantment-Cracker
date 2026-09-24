@@ -59,6 +59,12 @@ public final class Mc {
         return mc().field_71462_r;
     }
 
+    /** True when the open screen pauses singleplayer (the table and inventory screens do). */
+    public static boolean currentScreenPauses() {
+        Screen screen = currentScreen();
+        return screen != null && screen.func_231178_ax__(); // isPauseScreen
+    }
+
     /** {@code minecraft.displayGuiScreen(screen)} */
     public static void openScreen(Screen screen) {
         mc().func_147108_a(screen);

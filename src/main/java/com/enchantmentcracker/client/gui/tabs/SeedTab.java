@@ -257,7 +257,7 @@ public final class SeedTab implements CrackerTab {
         Theme.inset(ms, x + 66, y + 11, 120, 12);
         Mc.text(ms, "Player seed", x, y + 13, Theme.TEXT_DARK);
         Mc.text(ms, state.isLocked() ? PlayerSeed.format(state.getPlayerSeed()) : "unknown",
-                x + 70, y + 13, state.isLocked() ? 0xFF303030 : Theme.TEXT_MUTED);
+                x + 70, y + 13, state.isLocked() ? Theme.GOOD : Theme.TEXT_MUTED);
 
         String xpText = state.hasTableXpSeed()
                 ? PlayerSeed.formatXpSeed(state.getTableXpSeed()) : "-";
