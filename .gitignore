@@ -4,3 +4,4 @@ tests/cp.jar
 tests/selftest/run-*/
 tests/selftest/natives/
 tests/selftest/server-*.log
+tests/selftest/*-console.txt
