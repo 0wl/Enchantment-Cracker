@@ -2,6 +2,13 @@
 
 Newest first.
 
+- [x] **1.2.10:** A plan now also notices when the table's Quanta, Arcana or Rectification changed
+  (Apotheosis): those change which enchantments come out but not the level numbers, so comparing the
+  numbers alone missed them. `Apotheosis.Table.sameStats` is part of `PlanTab.tableMismatch`, so the
+  final step is held back and the plan is made again for the table as it now is. Rectification shows
+  in the table description ("R5%"). LAN test: a rectifier swapped in after planning (still E15, same
+  numbers) is caught, re-planned for "E15 Q15% A0% R5%" and delivered 1:1.
+
 - [x] **1.2.9:** "The table shows 10/23/30 but the plan expects 8/19/24 (Apotheosis E12)": the planner
   had picked a plan for a lower-Eterna table, which means rebuilding the table, and that step was
   missed. Now:

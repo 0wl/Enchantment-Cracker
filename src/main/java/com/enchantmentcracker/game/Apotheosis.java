@@ -159,8 +159,8 @@ public final class Apotheosis {
         }
 
         public String describe() {
-            return String.format(Locale.ROOT, "E%.1f Q%.0f%% A%.0f%%+",
-                    eterna, quanta, baseArcana);
+            return String.format(Locale.ROOT, "E%.1f Q%.0f%% A%.0f%%+", eterna, quanta, baseArcana)
+                    + (Math.abs(rectification) >= 0.005F ? String.format(Locale.ROOT, " R%.0f%%", rectification) : "");
         }
 
         /** The same stats at a different Eterna, for searching lower-power layouts. */
@@ -225,6 +225,21 @@ public final class Apotheosis {
 
         public Stats stats() {
             return stats;
+        }
+
+        /**
+         * Same Eterna, Quanta, Arcana and Rectification as {@code other}. Quanta, Arcana and
+         * Rectification change which enchantments come out but not the level numbers, so the
+         * numbers alone cannot tell the tables apart. (Synced stats have two decimals.)
+         */
+        public boolean sameStats(TableSetup other) {
+            if (!(other instanceof Table)) {
+                return false;
+            }
+            Stats o = ((Table) other).stats;
+            return Math.abs(o.eterna - stats.eterna) < 0.005F && Math.abs(o.quanta - stats.quanta) < 0.005F
+                    && Math.abs(o.baseArcana - stats.baseArcana) < 0.005F
+                    && Math.abs(o.rectification - stats.rectification) < 0.005F;
         }
 
         @Override

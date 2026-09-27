@@ -329,6 +329,8 @@ final class NetTest {
     static boolean mayBeCaught;
     /** Only carry out a pending re-plan; do nothing when there is none. */
     static boolean followUpOnly;
+    /** After planning, change the table's Quanta/Arcana/Rectification but not its Eterna or numbers. */
+    static boolean changeAfterPlan;
     static int cobbleBefore;
 
     /** Every shelf position around the table, bottom row first: 16 per row. */
@@ -473,8 +475,8 @@ final class NetTest {
         refreshTable();
         step(20, () -> {
             CrackerState state = CrackerState.get();
-            expectReplan = hiddenStep || lowerTo > 0;
-            planLowered = lowerTo > 0;
+            expectReplan = hiddenStep || lowerTo > 0 || changeAfterPlan;
+            planLowered = lowerTo > 0 || changeAfterPlan;
             mayBeCaught = false;
             if (followUpOnly && presetPlan == null) {
                 plan = null; // nothing left to follow up
@@ -523,6 +525,17 @@ final class NetTest {
             if (planShelves >= 0) {
                 partialRing(planShelves);
             }
+            if (changeAfterPlan) {
+                // One bookshelf out, a rectifier in: still Eterna 15 and the same numbers, other enchantments.
+                cmd("/setblock " + p(table, -2, 0, -2) + " apotheosis:rectifier");
+                log("    (the table changed after planning: a rectifier replaces a bookshelf)");
+            }
+            if (hiddenStep && !plan.needsDummy()) {
+                // "Enchant now" rolls with the XP seed already on the table, which hidden steps cannot
+                // move (they only move later seeds): such a plan must simply be delivered.
+                expectReplan = false;
+                log("    (an enchant-now plan: hidden steps cannot spoil it, so it must be delivered as planned)");
+            }
             if (hiddenStep) {
                 cmd("/give " + NAME + " stick 1");
                 log("    (a /give now: two RNG steps the cracker cannot see)");
@@ -559,15 +572,18 @@ final class NetTest {
                 log("    dropped " + state.getDropsSincePlan() + " (server-confirmed), " + pickedUp + " picked back up");
             }
             // (the cracker may already have planned again by now: that counts as caught too)
-            overshot = hiddenStep && (state.getPlanStage() == CrackerState.PlanStage.OVERSHOT || state.getPlan() != plan);
+            overshot = expectReplan && hiddenStep
+                    && (state.getPlanStage() == CrackerState.PlanStage.OVERSHOT || state.getPlan() != plan);
             if (overshot) {
                 // A plan with no drops: the /give's pickup animation is a real drop, one too many.
                 log("    the /give's pickup animation was a real drop: one more than this plan needs (overshot)");
                 check(CrackerState.get().getItemsDropped() > 0, "that drop was counted");
                 return;
             }
-            check(state.getDropsSincePlan() == Math.max(0, plan.itemsToThrow), "drops counted " + state.getDropsSincePlan()
-                    + " == planned " + plan.itemsToThrow);
+            if (plan.needsDummy()) { // an enchant-now plan has no drops to count (the /give's drop is irrelevant to it)
+                check(state.getDropsSincePlan() == Math.max(0, plan.itemsToThrow), "drops counted " + state.getDropsSincePlan()
+                        + " == planned " + plan.itemsToThrow);
+            }
             check(state.getPlanStage() == (plan.needsDummy() ? CrackerState.PlanStage.DUMMY : CrackerState.PlanStage.FINAL),
                     "stage before the enchanting: " + state.getPlanStage());
         });
@@ -608,7 +624,7 @@ final class NetTest {
                 if (truthXp != plan.xpSeed) {
                     log("    this re-plan was still off by the unseen steps; it must be caught again");
                 }
-            } else if (!hiddenStep) {
+            } else if (!(hiddenStep && expectReplan)) {
                 check(known != null && known == truthXp, "cracker's XP seed " + (known == null ? "unknown" : PlayerSeed.formatXpSeed(known))
                         + " == server's " + PlayerSeed.formatXpSeed(truthXp));
             } else {
@@ -618,7 +634,7 @@ final class NetTest {
             }
             if (mayBeCaught) {
                 // checked at the final step
-            } else if (!hiddenStep) {
+            } else if (!(hiddenStep && expectReplan)) {
                 check(truthXp == plan.xpSeed, "server is on the planned XP seed " + PlayerSeed.formatXpSeed(plan.xpSeed));
             } else {
                 check(truthXp != plan.xpSeed, "the hidden steps moved the server off the planned seed");
@@ -815,6 +831,7 @@ final class NetTest {
                 }
                 cmd("/give " + NAME + " iron_boots 1");
                 cmd("/give " + NAME + " iron_chestplate 1");
+                cmd("/give " + NAME + " iron_helmet 1");
             });
             step(20, () -> {
             });
@@ -844,10 +861,19 @@ final class NetTest {
                 for (int i = 0; i < 2; i++) {
                     followUp("iron_chestplate", new EnchantmentInstance("unbreaking", 3));
                 }
+                // The table's Quanta/Arcana/Rectification change after planning (same Eterna, same numbers).
+                step(1, () -> changeAfterPlan = true);
+                userPlan("iron_helmet", new EnchantmentInstance("unbreaking", 3));
+                step(1, () -> changeAfterPlan = false);
+                for (int i = 0; i < 2; i++) {
+                    followUp("iron_helmet", new EnchantmentInstance("unbreaking", 3));
+                }
+                step(10, NetTest::fullRing); // the bookshelf back for the rest
             } else {
                 step(5, () -> {
                     cmd("/clear " + NAME + " iron_boots");
                     cmd("/clear " + NAME + " iron_chestplate");
+                    cmd("/clear " + NAME + " iron_helmet");
                 });
             }
             for (String[] w : wishes) {

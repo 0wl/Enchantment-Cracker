@@ -285,7 +285,14 @@ public final class PlanTab implements CrackerTab {
         int[] levels = state.getTableLevels();
         boolean offered = levels[0] != 0 || levels[1] != 0 || levels[2] != 0;
         return offered && plan.item.equals(state.getTableItem())
-                && !java.util.Arrays.equals(plan.setup.levels(plan.xpSeed, plan.item), levels);
+                && (!java.util.Arrays.equals(plan.setup.levels(plan.xpSeed, plan.item), levels)
+                || statsChanged(plan, state.getTableSetup()));
+    }
+
+    /** An Apotheosis plan whose table stats (E, Q, A, rectification) are no longer the table's. */
+    static boolean statsChanged(EnchantCalculator.Result plan, com.enchantmentcracker.core.TableSetup now) {
+        return plan.setup instanceof com.enchantmentcracker.game.Apotheosis.Table && now != null
+                && !((com.enchantmentcracker.game.Apotheosis.Table) plan.setup).sameStats(now);
     }
 
     public static String wrongItemWarning(CrackerState state, EnchantCalculator.Result plan) {
@@ -304,7 +311,11 @@ public final class PlanTab implements CrackerTab {
                     + ": at this seed that gets different enchantments. Put the " + Mc.itemName(plan.item)
                     + " in, or plan again for the " + Mc.itemName(inTable) + " (the seed is still tracked).";
         }
-        // Right item and seed, so the table must show the plan's numbers; if not, its setup differs.
+        // Right item and seed, so the table must show the plan's numbers and stats; if not, its setup differs.
+        if (statsChanged(plan, state.getTableSetup())) {
+            return "The table is now " + state.getTableSetup().describe() + " but the plan was made for "
+                    + plan.setup.describe() + ": its enchantments would differ. Plan again before enchanting.";
+        }
         if (plan.setup != null) {
             int[] expected = plan.setup.levels(plan.xpSeed, plan.item);
             if (!java.util.Arrays.equals(expected, levels)) {
