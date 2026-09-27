@@ -341,9 +341,22 @@ public final class ClientEvents {
         }
     }
 
+    /** A stack sat on the cursor in the last frame of a container screen, on a server. */
+    private static boolean cursorHeld;
+
     @SubscribeEvent
     public static void onGuiOpen(GuiOpenEvent event) {
         Screen next = event.getGui();
+        // Closing a container the normal way (Esc, E) with a stack on the cursor makes the server
+        // throw that stack: four RNG steps. The client just empties its cursor
+        // (ClientPlayerEntity.closeScreenAndDropStack) and fires no toss event, so count it here.
+        // Any other way out still holds the stack now, and drops it through the client's own
+        // Container#onContainerClosed, whose toss event is counted as usual.
+        if (cursorHeld && next == null && Mc.currentScreen() instanceof ContainerScreen
+                && Mc.player() != null && Mc.cursorStack().func_190926_b()) { // isEmpty
+            CrackerState.get().onItemDropped();
+        }
+        cursorHeld = false;
         if (next instanceof DeathScreen) {
             newEntityPending = true;
             newEntityReason = "You respawned";
@@ -540,6 +553,8 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void onScreenDraw(GuiScreenEvent.DrawScreenEvent.Post event) {
         Screen screen = event.getGui();
+        cursorHeld = screen instanceof ContainerScreen && Mc.integratedServer() == null && Mc.player() != null
+                && !Mc.isCreative() && !Mc.cursorStack().func_190926_b();
         if (AutoDropper.isPickArmed() && screen instanceof ContainerScreen) {
             ContainerScreen<?> container = (ContainerScreen<?>) screen;
             String hint = "Click the item to use as junk (right-click to cancel)";

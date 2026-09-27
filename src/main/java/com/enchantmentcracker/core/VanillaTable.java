@@ -33,6 +33,13 @@ public final class VanillaTable extends TableSetup {
         return CrackEnchantments.getEnchantmentsInTable(new Random(), xpSeed, item, slot, level);
     }
 
+    @Override
+    public EnchantmentInstance clue(int xpSeed, String item, int slot, int level) {
+        Random rand = new Random();
+        List<EnchantmentInstance> list = CrackEnchantments.getEnchantmentsInTable(rand, xpSeed, item, slot, level);
+        return list.isEmpty() ? null : list.get(rand.nextInt(list.size()));
+    }
+
     /** Vanilla level requirements: rolled in slot order, and a slot below its number is empty. */
     public static int[] levelsFor(int xpSeed, int shelves, String item) {
         Random rand = new Random(xpSeed);

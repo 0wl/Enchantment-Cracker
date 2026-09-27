@@ -77,6 +77,52 @@ public final class PlayerSeed {
     }
 
     /**
+     * {@code steps} steps of the generator as one affine map, {@code s -> s * m + c}, so a long
+     * jump costs one multiply. Returns {m, c}.
+     */
+    public static long[] jump(int steps) {
+        long m = 1;
+        long c = 0;
+        for (int i = 0; i < steps; i++) {
+            m = (m * SimpleRandom.MULTIPLIER) & SimpleRandom.MASK;
+            c = (c * SimpleRandom.MULTIPLIER + SimpleRandom.ADDEND) & SimpleRandom.MASK;
+        }
+        return new long[]{m, c};
+    }
+
+    /**
+     * {@link #solve} for when each XP seed is only known to be one of a few values (on a server,
+     * see {@link PartialXpSeed}), and with {@code steps} RNG steps from the first XP seed to the
+     * second: 1 for back-to-back enchantments, plus 4 for every item dropped in between.
+     *
+     * <p>Only the true pair is linked by the generator; any other pair matches by chance with
+     * odds of about {@code first.length * second.length / 65536}.
+     *
+     * @return the state right after the second XP seed was produced for every pair that fits;
+     *         stops early once there are two, since that already means "not settled"
+     */
+    public static long[] solveSets(int[] first, int[] second, int steps) {
+        int[] sorted = second.clone();
+        java.util.Arrays.sort(sorted);
+        long[] mc = jump(steps);
+        long[] found = new long[2];
+        int n = 0;
+        for (int xpSeed1 : first) {
+            long high = ((long) xpSeed1 << 16) & 0x0000_ffff_ffff_0000L;
+            for (int low = 0; low < 65536; low++) {
+                long stepped = ((high | low) * mc[0] + mc[1]) & SimpleRandom.MASK;
+                if (java.util.Arrays.binarySearch(sorted, (int) (stepped >>> 16)) >= 0) {
+                    found[n++] = stepped;
+                    if (n == 2) {
+                        return found;
+                    }
+                }
+            }
+        }
+        return java.util.Arrays.copyOf(found, n);
+    }
+
+    /**
      * Finds how far the RNG has moved on since we last knew the state.
      *
      * <p>Handy when something unexpected consumed the player's RNG: the table still tells

@@ -128,7 +128,7 @@ public final class CrackerScreen extends McScreen {
         prefillFromTable();
         int[] levels = state.getTableLevels();
         Mc.chat("§a[Cracker] §fXP seed §e"
-                + com.enchantmentcracker.core.PlayerSeed.formatXpSeed(state.getTableXpSeed())
+                + state.getTableXpSeedText()
                 + "§f, bookshelves §e" + state.getTableBookshelves()
                 + "§f, levels §e" + levels[0] + "/" + levels[1] + "/" + levels[2]);
         Mc.chat("§7[Cracker] " + state.getStatusMessage());

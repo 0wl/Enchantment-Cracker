@@ -10,7 +10,7 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 ## Install
 
 1. Install **Forge 1.16.5** (36.x).
-2. Drop `enchcracker-1.2.4-forge-1.16.5.jar` into your `mods` folder.
+2. Drop `enchcracker-1.2.5-forge-1.16.5.jar` into your `mods` folder.
 3. Launch. Press **K** in game.
 
 ## What it does
@@ -18,7 +18,7 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 | | |
 |---|---|
 | **Reads the seed automatically** | In your own world (singleplayer or LAN host) the mod reads the player's random number generator straight out of the running game. Always exact. |
-| **Solves it from two XP seeds** | As a LAN guest or on a server, two XP seeds taken one enchantment apart pin down the full 48-bit state. |
+| **Solves it from two XP seeds** | As a LAN guest or on a server, two XP seeds taken one enchantment apart pin down the full 48-bit state. The server only shares half of each XP seed with your game; the mod works out the rest from the table's numbers and hints (Apotheosis's extra hints included), and items dropped along the way are allowed for. |
 | **Locks it from a thrown item** | On a server, after one enchantment, throwing a single item is enough: the launch velocity pins the remaining bits, so you never spend a second enchantment. |
 | **Brute-forces it the original way** | The classic cracker is still there for vanilla tables. |
 | **Predicts every slot** | Writes the real enchantments of all three slots under the enchanting table screen. |

@@ -70,7 +70,7 @@ public final class SeedTab implements CrackerTab {
                 .maxLength(8).hex());
         xpSeed2 = screen.addWidget(new Widgets.TextBox(Mc.font(), x + 112, solveY, 58, 14, "XP seed 2")
                 .maxLength(8).hex());
-        if (state.hasTableXpSeed()) {
+        if (state.hasTableXpSeed() && !state.isTableXpSeedPartial()) {
             xpSeed1.setText(PlayerSeed.formatXpSeed(state.getTableXpSeed()));
         }
         screen.addWidget(new Widgets.McButton(x + 176, solveY, 44, 14, "Solve", this::solveFromXpSeeds)
@@ -78,8 +78,10 @@ public final class SeedTab implements CrackerTab {
                         "into the full 48-bit player seed."));
         screen.addWidget(new Widgets.McButton(x + 224, solveY, 40, 14, "Grab", () -> {
             CrackerState s = CrackerState.get();
-            if (!s.hasTableXpSeed()) {
-                crackMessage = "Open an enchanting table first.";
+            if (!s.hasTableXpSeed() || s.isTableXpSeedPartial()) {
+                crackMessage = s.isTableXpSeedPartial()
+                        ? "Put an enchantable item in the table to read the whole XP seed."
+                        : "Open an enchanting table first.";
                 return;
             }
             String value = PlayerSeed.formatXpSeed(s.getTableXpSeed());
@@ -259,8 +261,7 @@ public final class SeedTab implements CrackerTab {
         Mc.text(ms, state.isLocked() ? PlayerSeed.format(state.getPlayerSeed()) : "unknown",
                 x + 70, y + 13, state.isLocked() ? Theme.GOOD : Theme.TEXT_MUTED);
 
-        String xpText = state.hasTableXpSeed()
-                ? PlayerSeed.formatXpSeed(state.getTableXpSeed()) : "-";
+        String xpText = state.getTableXpSeedText();
         Mc.text(ms, "XP seed " + xpText, x, y + 27, Theme.TEXT_DARK);
         Mc.text(ms, "drops " + state.getItemsDropped(), x + 104, y + 27, Theme.TEXT_MUTED);
         Mc.text(ms, "drift " + state.getDriftSteps(), x + 162, y + 27,

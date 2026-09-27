@@ -35,6 +35,33 @@ public abstract class TableSetup {
     /** The exact enchantments slot {@code slot} hands out at level requirement {@code level}. */
     public abstract List<EnchantmentInstance> enchantments(int xpSeed, String item, int slot, int level);
 
+    /**
+     * The hint the table shows for slot {@code slot} ("Sharpness III...?"), or null when the
+     * slot hands out nothing. Tables pick it with the same {@code Random} that just built the
+     * list: {@code list.get(rand.nextInt(list.size()))}.
+     */
+    public abstract EnchantmentInstance clue(int xpSeed, String item, int slot, int level);
+
+    /**
+     * For tables that reveal more than one hint per slot (Apotheosis): the first {@code count}
+     * hints in the order they are drawn, each removed from the list as it is picked, and whether
+     * that emptied the list. Null when this table shows a single hint only.
+     */
+    public ClueRoll rollClues(int xpSeed, String item, int slot, int level, int count) {
+        return null;
+    }
+
+    /** See {@link #rollClues}. */
+    public static final class ClueRoll {
+        public final List<EnchantmentInstance> picks;
+        public final boolean exhausted;
+
+        public ClueRoll(List<EnchantmentInstance> picks, boolean exhausted) {
+            this.picks = picks;
+            this.exhausted = exhausted;
+        }
+    }
+
     public boolean isShelfBased() {
         return shelves >= 0;
     }

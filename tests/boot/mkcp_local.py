@@ -8,7 +8,10 @@ import os, pathlib, re, zipfile
 
 FORGE = "1.16.5-36.2.42"
 MC = "1.16.5-20210115.111550"
-LIB = pathlib.Path(os.environ['APPDATA']) / '.minecraft' / 'libraries'
+# The vanilla launcher's folder, else CurseForge's (or LIBRARIES=<folder> to choose).
+LIB = pathlib.Path(os.environ.get('LIBRARIES') or os.environ['APPDATA'] + '/.minecraft/libraries')
+if not (LIB / 'net/minecraftforge/forge' / FORGE).exists():
+    LIB = pathlib.Path(os.environ['USERPROFILE']) / 'curseforge' / 'minecraft' / 'Install' / 'libraries'
 
 forge_dir = LIB / 'net/minecraftforge/forge' / FORGE
 mc_dir = LIB / 'net/minecraft/client' / MC

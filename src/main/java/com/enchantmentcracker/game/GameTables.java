@@ -78,19 +78,33 @@ public final class GameTables {
 
         @Override
         public List<EnchantmentInstance> enchantments(int xpSeed, String item, int slot, int level) {
+            return convert(roll(new Random(), xpSeed, item, slot, level));
+        }
+
+        @Override
+        public EnchantmentInstance clue(int xpSeed, String item, int slot, int level) {
+            Random rand = new Random();
+            List<EnchantmentData> list = roll(rand, xpSeed, item, slot, level);
+            if (list.isEmpty()) {
+                return null;
+            }
+            // EnchantmentContainer#onCraftMatrixChanged: the same rand picks the hint
+            return convert(Collections.singletonList(list.get(rand.nextInt(list.size())))).get(0);
+        }
+
+        /** EnchantmentContainer#getEnchantmentList, leaving {@code rand} where the table leaves it. */
+        private List<EnchantmentData> roll(Random rand, int xpSeed, String item, int slot, int level) {
             ItemStack stack = stack(item);
             if (stack.func_190926_b() || level <= 0) {
                 return Collections.emptyList();
             }
-            // EnchantmentContainer#getEnchantmentList
-            Random rand = new Random();
             rand.setSeed(xpSeed + slot);
             // EnchantmentHelper.buildEnchantmentList(rand, stack, level, false)
             List<EnchantmentData> list = EnchantmentHelper.func_77513_b(rand, stack, level, false);
             if (stack.func_77973_b() == Items.field_151122_aG && list.size() > 1) { // Items.BOOK
                 list.remove(rand.nextInt(list.size()));
             }
-            return convert(list);
+            return list;
         }
     }
 

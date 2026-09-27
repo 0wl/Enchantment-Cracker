@@ -2,6 +2,32 @@
 
 Newest first.
 
+- [x] **Bug (servers / LAN guests): the table's XP seed reaches the client as 16 bits only.** Fixed in 1.2.5.
+  - `SWindowPropertyPacket` writes container data with `writeShort`, so over a real network
+    `EnchantmentContainer.getXPSeed()` (`func_217005_f`) is `(short) realXpSeed`, sign-extended
+    (e.g. `FFFFFB78`). Singleplayer / LAN host pass packets in memory without serialising, so
+    the full int arrives, which is why every test passed.
+  - Seen 2026-09-27 as a guest on DDSS2 (Apotheosis E15 Q15 A0, diamond boots): table 10/24/30,
+    prediction 8/21/30, "Another mod may change enchanting here". No other mod touches the
+    table; Apotheosis's own levels (L = round(E*2): slot 1 = L*0.2-0.4, slot 2 = L*0.6-0.8,
+    slot 3 = L) are what the table shows.
+  - Breaks in `TableWatcher.tick` (prediction + mismatch guard), `CrackerState.observeXpSeed`
+    and `PlayerSeed.solve` (two-XP-seed lock), which all assume 32 bits.
+  - Fix idea: when not in your own world, treat the synced value as the low 16 bits only and
+    recover the top 16 by trying all 65,536 and keeping the one that reproduces the shown
+    levels and the three enchantment clues (vanilla and Apotheosis). Then lock as before.
+  - **Done (1.2.5):** `core/PartialXpSeed` narrows the top half from the levels, the hint
+    fields and (Apotheosis) the ordered hint list + "all hints" flag from its `ClueMessage`.
+    Apotheosis tables often leave a few candidates, so `CrackerState` now pairs candidate
+    *sets*: only the true pair is one enchantment (plus 4 steps per drop between) apart
+    (`PlayerSeed.solveSets`). Drops are timed from when a seed *appeared*, not when it was
+    worked out, so drops before the lock are allowed for. Once locked, each new XP seed is
+    named from its low half at once. The overlay shows offers all remaining candidates agree on.
+  - Also fixed: closing an inventory with Esc/E while holding a stack on the cursor makes the
+    server throw it (4 RNG steps) with no client-side toss event; now counted.
+  - Verified against a real dedicated server over TCP (`tests/selftest/netlaunch.py`), with
+    `/data get entity <you> XpSeed` as ground truth: Apotheosis 124/124, vanilla 123/123.
+
 All of the items below were done for **1.2.0**. Verify with `tests\verify.ps1` (build +
 pure-logic feature tests + link check) and the in-game checklist in `tests\VERIFICATION.md`.
 

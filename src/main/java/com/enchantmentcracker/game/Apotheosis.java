@@ -255,23 +255,101 @@ public final class Apotheosis {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public List<EnchantmentInstance> enchantments(int xpSeed, String item, int slot, int level) {
+            return GameTables.convert(roll(new Random(), xpSeed, item, slot, level));
+        }
+
+        @Override
+        public EnchantmentInstance clue(int xpSeed, String item, int slot, int level) {
+            Random rand = new Random();
+            List<EnchantmentData> list = roll(rand, xpSeed, item, slot, level);
+            if (list.isEmpty()) {
+                return null;
+            }
+            // ApothEnchantContainer#onCraftMatrixChanged: list.remove(rand.nextInt(list.size()))
+            return GameTables.convert(Collections.singletonList(list.get(rand.nextInt(list.size())))).get(0);
+        }
+
+        @Override
+        public ClueRoll rollClues(int xpSeed, String item, int slot, int level, int count) {
+            Random rand = new Random();
+            List<EnchantmentData> list = new ArrayList<>(roll(rand, xpSeed, item, slot, level));
+            List<EnchantmentData> picks = new ArrayList<>();
+            // ApothEnchantContainer#onCraftMatrixChanged: the first hint, then up to Clues more,
+            // each removed from the list with the same rand
+            while (picks.size() < count && !list.isEmpty()) {
+                picks.add(list.remove(rand.nextInt(list.size())));
+            }
+            return new ClueRoll(GameTables.convert(picks), list.isEmpty());
+        }
+
+        /** ApothEnchantContainer#getEnchantmentList, leaving {@code rand} where the table leaves it. */
+        @SuppressWarnings("unchecked")
+        private List<EnchantmentData> roll(Random rand, int xpSeed, String item, int slot, int level) {
             ItemStack stack = GameTables.stack(item);
             if (stack.func_190926_b()) {
                 return Collections.emptyList();
             }
             float arcana = stats.baseArcana + stack.getItemEnchantability() / 2.0F;
-            Random rand = new Random();
             rand.setSeed(xpSeed + slot);
             try {
-                List<EnchantmentData> list = (List<EnchantmentData>) selectEnchantment.invoke(null, rand, stack, level,
+                return (List<EnchantmentData>) selectEnchantment.invoke(null, rand, stack, level,
                         stats.quanta, arcana, stats.rectification, false);
-                return GameTables.convert(list);
             } catch (Throwable t) {
                 failure = "Apotheosis enchantment selection failed: " + t;
                 return Collections.emptyList();
             }
+        }
+    }
+
+    // ------------------------------------------------------------------ clues
+
+    private static boolean screenResolved;
+    private static Class<?> screenClass;
+    private static Field screenClues;
+    private static Field screenAllClues;
+
+    /**
+     * The hints Apotheosis's own packet ({@code ClueMessage}) delivered to its table screen for
+     * {@code slot}, in the order drawn, and whether they are the slot's whole list. Null when
+     * unavailable. The screen keeps a slot's hints until new ones arrive, so the caller checks
+     * them against the table's own hint before trusting them.
+     */
+    public static Object[] screenClues(Object screen, int slot) {
+        if (!isInstalled()) {
+            return null;
+        }
+        resolveScreen();
+        if (screenClass == null || !screenClass.isInstance(screen)) {
+            return null;
+        }
+        try {
+            Object map = screenClues.get(screen);
+            @SuppressWarnings("unchecked")
+            List<EnchantmentData> list = (List<EnchantmentData>) ((java.util.Map<Integer, ?>) map).get(slot);
+            boolean[] all = (boolean[]) screenAllClues.get(screen);
+            if (list == null || list.isEmpty()) {
+                return null;
+            }
+            return new Object[]{GameTables.convert(new ArrayList<>(list)), all[slot]};
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static synchronized void resolveScreen() {
+        if (screenResolved) {
+            return;
+        }
+        screenResolved = true;
+        try {
+            Class<?> screen = Class.forName("shadows.apotheosis.ench.table.ApothEnchantScreen", false,
+                    Apotheosis.class.getClassLoader());
+            screenClues = field(screen, "clues");
+            screenAllClues = field(screen, "hasAllClues");
+            screenClass = screen;
+        } catch (Throwable t) {
+            screenClass = null; // fine: the table's single hint is still used
         }
     }
 

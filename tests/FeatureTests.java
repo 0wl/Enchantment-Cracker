@@ -2,7 +2,11 @@ import com.enchantmentcracker.core.AnvilPlanner;
 import com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance;
 import com.enchantmentcracker.core.EnchantCalculator;
 import com.enchantmentcracker.core.EnchantModel;
+import com.enchantmentcracker.core.CrackerState;
+import com.enchantmentcracker.core.Models;
+import com.enchantmentcracker.core.PartialXpSeed;
 import com.enchantmentcracker.core.PlayerSeed;
+import com.enchantmentcracker.core.TableSetup;
 import com.enchantmentcracker.core.VanillaModel;
 import com.enchantmentcracker.core.VelocityCracker;
 
@@ -41,12 +45,146 @@ public class FeatureTests {
         anvilFromHeldItem();
         System.out.println("== EnchantCalculator (T5: drop-search ceiling) ==");
         dropCeiling();
+        System.out.println("== PartialXpSeed (servers sync only 16 bits of the XP seed) ==");
+        partialXpSeed();
+        System.out.println("== PlayerSeed.solveSets (lock from candidate sets, drops between) ==");
+        solveSets();
+        System.out.println("== CrackerState on a server: half-known seeds, drops before the lock ==");
+        serverFlow();
 
         System.out.println();
         System.out.println(failures == 0 ? "ALL " + checks + " CHECKS PASSED" : failures + " / " + checks + " CHECKS FAILED");
         if (failures != 0) {
             System.exit(1);
         }
+    }
+
+    // ------------------------------------------------------------------ servers
+
+    private static void partialXpSeed() {
+        java.util.Random rng = new java.util.Random(42);
+        String[] items = {"diamond_sword", "diamond_pickaxe", "book", "diamond_boots", "bow", "golden_sword"};
+        int unique = 0;
+        int wrong = 0;
+        int lost = 0;
+        int runs = 150;
+        for (int run = 0; run < runs; run++) {
+            int truth = rng.nextInt();
+            TableSetup table = Models.vanillaTable(1 + rng.nextInt(15));
+            PartialXpSeed partial = new PartialXpSeed();
+            partial.setSynced((short) truth); // what SWindowPropertyPacket delivers
+            for (int view = 0; view < 2 && partial.resolved() == null; view++) {
+                String item = items[rng.nextInt(items.length)];
+                int[] levels = table.levels(truth, item);
+                EnchantmentInstance[] clues = new EnchantmentInstance[3];
+                for (int slot = 0; slot < 3; slot++) {
+                    EnchantmentInstance clue = levels[slot] > 0 ? table.clue(truth, item, slot, levels[slot]) : null;
+                    clues[slot] = clue == null ? PartialXpSeed.NO_CLUE : clue;
+                }
+                partial.observe(new PartialXpSeed.Observation(table, item, levels, clues));
+            }
+            Integer resolved = partial.resolved();
+            int[] left = partial.candidates();
+            if (resolved != null) {
+                unique++;
+                wrong += resolved != truth ? 1 : 0;
+            }
+            if (left == null || Arrays.stream(left).noneMatch(v -> v == truth)) {
+                lost++;
+            }
+        }
+        check(wrong == 0, "never settles on a wrong XP seed (" + wrong + " of " + runs + ")");
+        check(lost == 0, "the true XP seed always stays among the candidates (" + lost + " lost)");
+        check(unique > runs / 2, "one or two items usually pin the seed down: " + unique + " of " + runs);
+        check(PartialXpSeed.lowBits((short) 0xABCDFB78) == 0xFB78, "sign-extended short keeps the low 16 bits");
+    }
+
+    private static void solveSets() {
+        java.util.Random rng = new java.util.Random(7);
+        int exact = 0;
+        int wrong = 0;
+        int runs = 60;
+        for (int run = 0; run < runs; run++) {
+            long s0 = rng.nextLong() & 0xFFFF_FFFF_FFFFL;
+            int drops = rng.nextInt(20);
+            long s1 = PlayerSeed.advance(s0, 1 + 4 * drops);
+            int[] a = decoys(rng, PlayerSeed.xpSeedOf(s0), 1 + rng.nextInt(30));
+            int[] b = decoys(rng, PlayerSeed.xpSeedOf(s1), 1 + rng.nextInt(30));
+            long[] found = PlayerSeed.solveSets(a, b, 1 + 4 * drops);
+            if (found.length == 1) {
+                exact += found[0] == s1 ? 1 : 0;
+                wrong += found[0] != s1 ? 1 : 0;
+            }
+        }
+        check(wrong == 0, "a single solution is always the true state (" + wrong + " wrong)");
+        check(exact >= runs * 9 / 10, "sets of up to 30 x 30 lock almost always: " + exact + " of " + runs);
+        long[] mc = PlayerSeed.jump(37);
+        long s = 0x0000_1234_5678_9ABCL;
+        check(((s * mc[0] + mc[1]) & 0xFFFF_FFFF_FFFFL) == PlayerSeed.advance(s, 37), "jump(37) equals 37 steps");
+    }
+
+    /** {@code truth} plus {@code n - 1} other XP seeds sharing its low 16 bits, shuffled. */
+    private static int[] decoys(java.util.Random rng, int truth, int n) {
+        int[] out = new int[n];
+        out[0] = truth;
+        for (int i = 1; i < n; i++) {
+            out[i] = PartialXpSeed.withHigh(rng.nextInt(65536), truth);
+        }
+        for (int i = n - 1; i > 0; i--) {
+            int j = rng.nextInt(i + 1);
+            int t = out[i];
+            out[i] = out[j];
+            out[j] = t;
+        }
+        return out;
+    }
+
+    /**
+     * The server path end to end, the way TableWatcher drives it: each XP seed shows up as its
+     * low half first, the full value is only ever narrowed to a few, and items are dropped
+     * between the two enchantments and after the second one, before anything is locked.
+     */
+    private static void serverFlow() {
+        java.util.Random rng = new java.util.Random(99);
+        CrackerState state = CrackerState.get();
+        state.resetSeed();
+        long server = rng.nextLong() & 0xFFFF_FFFF_FFFFL;
+
+        server = PlayerSeed.next(server); // enchantment 1
+        int xpA = PlayerSeed.xpSeedOf(server);
+        state.notePartialXpSeed(PartialXpSeed.lowBits(xpA), PartialXpSeed.ALL, null);
+        int[] setA = decoys(rng, xpA, 25);
+        state.notePartialXpSeed(PartialXpSeed.lowBits(xpA), setA.length, setA);
+        check(!state.isLocked(), "one half-known XP seed does not lock");
+
+        for (int i = 0; i < 3; i++) { // dropped between the enchantments
+            state.onItemDropped();
+            server = PlayerSeed.advance(server, 4);
+        }
+        server = PlayerSeed.next(server); // enchantment 2
+        int xpB = PlayerSeed.xpSeedOf(server);
+        state.notePartialXpSeed(PartialXpSeed.lowBits(xpB), PartialXpSeed.ALL, null);
+        for (int i = 0; i < 2; i++) { // dropped after it, before its seed is worked out
+            state.onItemDropped();
+            server = PlayerSeed.advance(server, 4);
+        }
+        int[] setB = decoys(rng, xpB, 25);
+        state.notePartialXpSeed(PartialXpSeed.lowBits(xpB), setB.length, setB);
+        check(state.isLocked() && state.getSource() == CrackerState.Source.TWO_SEEDS,
+                "two 25-candidate XP seeds with drops around them lock: " + state.getStatusMessage());
+        check(state.getPlayerSeed() == server, "locked onto the exact server state, drops included");
+        Integer effective = state.getEffectiveXpSeed();
+        check(effective != null && effective == xpB, "table XP seed now known in full");
+
+        server = PlayerSeed.next(server); // enchantment 3: known at once from the lock
+        int xpC = PlayerSeed.xpSeedOf(server);
+        Integer known = state.knownFullXpSeed(PartialXpSeed.lowBits(xpC));
+        check(known != null && known == xpC, "the lock names the next XP seed from its low half alone");
+        if (known != null) {
+            state.observeXpSeed(known);
+        }
+        check(state.getPlayerSeed() == server && state.getDriftSteps() == 0, "still exact after the next enchantment");
+        state.resetSeed();
     }
 
     // ------------------------------------------------------------------ PlayerSeed

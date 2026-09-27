@@ -45,7 +45,8 @@ public final class EnchantTablePrediction {
         }
 
         CrackerState state = CrackerState.get();
-        int xpSeed = container.func_217005_f(); // getXPSeed()
+        // Whole in your own world; on a server worked out from what the table shows, else null.
+        Integer xpSeed = TableWatcher.currentXpSeed();
         TableSetup setup = state.getTableSetup();
         String problem = state.getTableProblem();
 
@@ -66,14 +67,23 @@ public final class EnchantTablePrediction {
         Theme.darkPanel(ms, left, top, width, height);
 
         String where = setup == null ? "table ?" : setup.describe();
-        String header = "XP seed " + PlayerSeed.formatXpSeed(xpSeed) + "   " + where;
+        String header = "XP seed " + (xpSeed != null ? PlayerSeed.formatXpSeed(xpSeed) : state.getTableXpSeedText())
+                + "   " + where;
         Mc.shadowText(ms, Mc.trim(header, width - 10), left + 5, top + 4, 0xFFFFFF55);
         if (hypothetical && setup != null) {
             String note = "preview: " + Mc.itemName(item);
             Mc.shadowText(ms, Mc.trim(note, width - 10), left + 5, top + 46, 0xFFAAAAAA);
         }
 
-        if (setup == null || problem != null) {
+        // On a server, before the seed is pinned down: a few seeds may still fit, and for many
+        // slots they all agree on what the slot gives. Show those.
+        int[] fits = xpSeed == null && !hypothetical ? state.getPartialSet() : null;
+        if (setup != null && fits != null && fits.length <= CONSENSUS_LIMIT) {
+            renderConsensus(ms, fits, setup, item, left, top, width);
+            return;
+        }
+
+        if (setup == null || problem != null || xpSeed == null) {
             int lineY = top + 17;
             for (String line : Theme.wrap(problem == null ? "Cannot read this table yet." : problem, width - 10)) {
                 if (lineY > top + height - 10) {
@@ -100,6 +110,68 @@ public final class EnchantTablePrediction {
             Mc.shadowText(ms, Mc.trim(describe(preview.enchantments), width - 62),
                     left + 52, rowY, 0xFFFFFFFF);
         }
+    }
+
+    /** Most seeds worth rolling for a "they all agree" preview. */
+    private static final int CONSENSUS_LIMIT = 256;
+    private static String consensusKey;
+    private static String[] consensusRows;
+
+    /** Each slot's offer if every seed still possible gives the same one; else how many differ. */
+    private static void renderConsensus(MatrixStack ms, int[] fits, TableSetup setup, String item,
+                                        int left, int top, int width) {
+        String key = java.util.Arrays.toString(fits) + item + setup.describe();
+        if (!key.equals(consensusKey)) {
+            consensusKey = key;
+            consensusRows = new String[3];
+            java.util.List<java.util.Set<java.util.List<String>>> outcomes = new java.util.ArrayList<>();
+            for (int slot = 0; slot < 3; slot++) {
+                outcomes.add(new java.util.LinkedHashSet<>());
+            }
+            int[] levels = null;
+            for (int seed : fits) {
+                EnchantCalculator.SlotPreview[] slots = EnchantCalculator.preview(seed, setup, item);
+                levels = new int[]{slots[0].levelRequirement, slots[1].levelRequirement, slots[2].levelRequirement};
+                for (int slot = 0; slot < 3; slot++) {
+                    java.util.List<String> names = new java.util.ArrayList<>();
+                    for (EnchantmentInstance e : slots[slot].enchantments) {
+                        names.add(e.enchantment + " " + e.level);
+                    }
+                    java.util.Collections.sort(names);
+                    outcomes.get(slot).add(names);
+                }
+                if (outcomes.get(0).size() > 1 && outcomes.get(1).size() > 1 && outcomes.get(2).size() > 1) {
+                    break; // nothing left to agree on
+                }
+            }
+            for (int slot = 0; slot < 3; slot++) {
+                java.util.Set<java.util.List<String>> set = outcomes.get(slot);
+                if (levels == null || levels[slot] == 0) {
+                    consensusRows[slot] = null;
+                } else if (set.size() == 1) {
+                    EnchantCalculator.SlotPreview one = EnchantCalculator.preview(fits[0], setup, item)[slot];
+                    consensusRows[slot] = levels[slot] + "lv|" + describe(one.enchantments);
+                } else {
+                    consensusRows[slot] = levels[slot] + "lv|? not settled yet (several seeds fit)";
+                }
+            }
+        }
+        for (int slot = 0; slot < 3; slot++) {
+            int rowY = top + 16 + slot * 10;
+            Mc.shadowText(ms, (slot + 1) + ")", left + 5, rowY, 0xFFB8B8B8);
+            String row = consensusRows[slot];
+            if (row == null) {
+                Mc.shadowText(ms, "not available", left + 20, rowY, 0xFFB0B0B0);
+                continue;
+            }
+            int bar = row.indexOf('|');
+            Mc.shadowText(ms, row.substring(0, bar), left + 20, rowY, 0xFF80FF80);
+            boolean settled = !row.startsWith("?", bar + 1);
+            Mc.shadowText(ms, Mc.trim(row.substring(bar + 1), width - 62), left + 52, rowY,
+                    settled ? 0xFFFFFFFF : 0xFFFFB070);
+        }
+        Mc.shadowText(ms, Mc.trim(fits.length + " XP seeds still fit; enchant once to lock the seed.", width - 10),
+                left + 5, top + 46, 0xFFAAAAAA);
     }
 
     static String describe(List<EnchantmentInstance> enchantments) {

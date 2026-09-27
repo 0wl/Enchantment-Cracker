@@ -1,9 +1,12 @@
-"""Launch a throwaway Forge 1.16.5 client with the mod + self-test mod. Usage: launch.py vanilla|apoth"""
+"""Launch a throwaway Forge 1.16.5 client with the mod + self-test mod. Usage: launch.py vanilla|apoth [test jar]"""
 import json, os, pathlib, shutil, subprocess, sys, uuid, zipfile
 
+import glob
 mode = sys.argv[1]
 HERE = pathlib.Path(__file__).resolve().parent
-MOD_JAR = HERE.parents[2] / 'output' / 'enchcracker-1.1.0-forge-1.16.5.jar'
+# The newest build in output/, and the test mod jar (argument 2, default: next to this script).
+MOD_JAR = os.environ.get('ENCH_MOD_JAR') or sorted(glob.glob(str(HERE.parents[2] / 'output' / 'enchcracker-*-forge-1.16.5.jar')), key=os.path.getmtime)[-1]
+TEST_JAR = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / 'enchcrackertest.jar'
 I = pathlib.Path(os.environ['USERPROFILE']) / 'curseforge/minecraft/Install'
 L = I / 'libraries'
 PACK_MODS = pathlib.Path(os.environ['USERPROFILE']) / 'curseforge/minecraft/Instances/Dungeons Dragons and Space Shuttles 2/mods'
@@ -14,7 +17,7 @@ if game.exists():
     shutil.rmtree(game)
 (game / 'mods').mkdir(parents=True)
 shutil.copy(MOD_JAR, game / 'mods')
-shutil.copy(HERE / 'enchcrackertest.jar', game / 'mods')
+shutil.copy(TEST_JAR, game / 'mods')
 if mode == 'apoth':
     for jar in ('Apotheosis-1.16.5-4.8.9A0.jar', 'Placebo-1.16.5-4.7.1.jar'):
         shutil.copy(PACK_MODS / jar, game / 'mods')

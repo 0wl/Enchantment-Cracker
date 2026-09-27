@@ -59,7 +59,10 @@ import java.util.function.BooleanSupplier;
 public final class SelfTest {
 
     static final String NAME = "SelfTest";
-    static final boolean APOTH = "apoth".equals(System.getProperty("enchcracker.selftest.mode"));
+    static final String MODE = System.getProperty("enchcracker.selftest.mode", "vanilla");
+    static final boolean APOTH = MODE.endsWith("apoth");
+    /** netvanilla / netapoth: join a dedicated server instead of making a world (see NetTest). */
+    static final boolean NET = MODE.startsWith("net");
 
     static final List<Runnable> steps = new ArrayList<>();
     static final List<Integer> waits = new ArrayList<>();
@@ -82,7 +85,11 @@ public final class SelfTest {
     public SelfTest() {
         MinecraftForge.EVENT_BUS.addListener(SelfTest::onTick);
         MinecraftForge.EVENT_BUS.addListener(SelfTest::onRender);
-        build();
+        if (NET) {
+            NetTest.build();
+        } else {
+            build();
+        }
     }
 
     static Minecraft mc() {
@@ -443,8 +450,9 @@ public final class SelfTest {
                         "plan starts at the right stage: " + state.getPlanStage());
             }
         });
-        // Close the table and put cobblestone in hotbar slot 0, the slot Q drops from.
-        step(15, () -> Mc.openScreen(null));
+        // Close the table and put cobblestone in hotbar slot 0, the slot Q drops from. Closed the
+        // way Esc does it, so the server hears of it too; otherwise it ignores the swap below.
+        step(15, () -> Mc.player().func_71053_j()); // closeScreen
         step(15, () -> {
             Slot cobble = null;
             for (Slot slot : Mc.player().field_71069_bz.field_75151_b) {

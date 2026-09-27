@@ -20,6 +20,14 @@ public final class CrackerState {
 
     /** How far forward we will search when the RNG has drifted. 200k steps is 50k dropped items. */
     private static final int RESYNC_WINDOW = 200_000;
+    /**
+     * Largest (earlier candidates x later candidates) worth pairing. A wrong pair fits by chance
+     * with odds of about this over 65,536, and only matters when the true pair is missing (something
+     * else used the RNG); a wrong lock is then caught at the next enchantment.
+     */
+    private static final int PAIR_LIMIT = 1024;
+    /** Largest candidate set a locked seed is re-synced against over the whole drift window. */
+    private static final int RESYNC_SET_LIMIT = 64;
 
     public static CrackerState get() {
         return INSTANCE;
@@ -63,10 +71,38 @@ public final class CrackerState {
 
     private boolean hasTableXpSeed;
     private int tableXpSeed;
-    private boolean hasPendingXpSeed;
-    private int pendingXpSeed;
-    /** Items dropped when the pending XP seed was captured, so the velocity solver knows its offset. */
+    /**
+     * On a server the table only syncs the low 16 bits of the XP seed ({@link PartialXpSeed}).
+     * True while the table is on an XP seed whose top half is not worked out yet; the old
+     * {@link #tableXpSeed} is then out of date and must not be used.
+     */
+    private boolean tableXpSeedPartial;
+    private int partialLow;
+    private int partialCount = -1;
+    /** The full XP seeds that still fit the partial one, once narrowed; null while unknown. */
+    private int[] partialSet;
+    /** Some table XP seed has been seen since the last reset. */
+    private boolean seenTableSeed;
+    /** The table's XP seed is left over from an old generator (see {@link #staleXpSeed}). */
+    private boolean currentStale;
+    /** The table's XP seed is the first one seen, not one we watched an enchantment make. */
+    private boolean currentFirst;
+    /**
+     * Items dropped when the table's XP seed appeared, i.e. at the enchantment that made it. On a
+     * server a seed may only be worked out later, and drops in between must not be mistaken for
+     * drops before it.
+     */
+    private int seedChangeDrops;
+
+    /**
+     * What is known about the XP seed before the table's current one (exact: one value; on a
+     * server possibly a few), to pair with the current one. Null when there is nothing to pair.
+     */
+    private int[] pendingSet;
+    /** Items dropped when the pending XP seed appeared, so the steps between the two are known. */
     private int pendingDropBaseline;
+    /** The pending XP seed came from the brute-force cracker and is the table's current one. */
+    private boolean pendingIsCurrent;
 
     private int itemsDropped;
     private int driftSteps;
@@ -150,10 +186,86 @@ public final class CrackerState {
      * is dropped. Enchanting now uses the snapshot.
      */
     public synchronized Integer getEffectiveXpSeed() {
+        if (tableXpSeedPartial) {
+            return null;
+        }
         if (hasTableXpSeed) {
             return tableXpSeed;
         }
         return isLocked() ? Integer.valueOf(PlayerSeed.xpSeedOf(playerSeed)) : null;
+    }
+
+    /** The full XP seeds that still fit the table's half-known one, once narrowed; else null. */
+    public synchronized int[] getPartialSet() {
+        return tableXpSeedPartial && partialSet != null ? partialSet.clone() : null;
+    }
+
+    public synchronized boolean isTableXpSeedPartial() {
+        return tableXpSeedPartial;
+    }
+
+    /** The table's XP seed for display: in full, "????FB78" while only half is known, or "-". */
+    public synchronized String getTableXpSeedText() {
+        if (tableXpSeedPartial) {
+            return PartialXpSeed.format(partialLow);
+        }
+        return hasTableXpSeed ? PlayerSeed.formatXpSeed(tableXpSeed) : "-";
+    }
+
+    /**
+     * The full XP seed behind the low half a server's table synced, when it can be told without
+     * rolling the table: it is the one already known, or (seed locked) the one the enchantment
+     * that made it was bound to produce. Null otherwise.
+     */
+    public synchronized Integer knownFullXpSeed(int low) {
+        if (hasTableXpSeed && !tableXpSeedPartial && PartialXpSeed.lowBits(tableXpSeed) == low) {
+            return tableXpSeed;
+        }
+        if (isLocked() && source != Source.DIRECT) {
+            // Drops made since this seed appeared came after the enchantment; step back over them.
+            int late = tableXpSeedPartial && partialLow == low ? itemsDropped - seedChangeDrops : 0;
+            long before = PlayerSeed.advance(playerSeed, -late * PlayerSeed.STEPS_PER_ITEM_DROP);
+            int next = PlayerSeed.xpSeedOf(PlayerSeed.next(before));
+            if (PartialXpSeed.lowBits(next) == low) {
+                return next;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The table is on an XP seed of which only the low half is known, and {@code candidates}
+     * full values still fit what it shows ({@code set} lists them once narrowed, else null).
+     */
+    public synchronized void notePartialXpSeed(int low, int candidates, int[] set) {
+        if (source == Source.DIRECT) {
+            return;
+        }
+        boolean newSeed = !(tableXpSeedPartial && partialLow == low);
+        if (!newSeed && partialCount == candidates) {
+            return;
+        }
+        if (newSeed) {
+            seedAppeared();
+        }
+        tableXpSeedPartial = true;
+        partialLow = low;
+        partialCount = candidates;
+        partialSet = set != null && candidates > 0 && candidates < PartialXpSeed.ALL ? set.clone() : null;
+        String seed = PartialXpSeed.format(low);
+        if (candidates == 0) {
+            statusMessage = "No XP seed ending " + seed.substring(4) + " fits what this table shows. "
+                    + "Another mod may change enchanting here.";
+        } else if (candidates >= PartialXpSeed.ALL) {
+            statusMessage = "On a server the table only shares half the XP seed (" + seed
+                    + "). Put an enchantable item in the table to work out the rest.";
+        } else {
+            statusMessage = candidates + " XP seeds fit this table. Enchant something to lock the seed, "
+                    + "or put a different item in to narrow it down.";
+        }
+        if (partialSet != null) {
+            seedKnown();
+        }
     }
 
     /** The exact stored XP seed, read out of the integrated server. */
@@ -232,9 +344,9 @@ public final class CrackerState {
 
     /** Called when the brute-force cracker narrows down to a single XP seed. */
     public synchronized void setCrackedXpSeed(int xpSeed) {
-        this.hasPendingXpSeed = true;
-        this.pendingXpSeed = xpSeed;
+        this.pendingSet = new int[]{xpSeed};
         this.pendingDropBaseline = itemsDropped;
+        this.pendingIsCurrent = true;
         this.status = Status.AWAITING_SECOND;
         this.source = Source.CRACKED;
         this.statusMessage = "XP seed cracked. Enchant once more to get the full player seed.";
@@ -242,99 +354,185 @@ public final class CrackerState {
     }
 
     /**
-     * Feeds the XP seed the enchanting table is currently reporting.
+     * Feeds the XP seed the enchanting table is currently reporting, in full.
      *
      * <p>The XP seed only changes when the player enchants something, so a change means
      * exactly one {@code nextInt()} was consumed — plus whatever else touched the RNG,
-     * which is what the drift search picks up.
+     * which is what the drift search picks up. On a server the full value may only be worked
+     * out some time after the table first showed its low half ({@link #notePartialXpSeed}).
      */
     public synchronized void observeXpSeed(int xpSeed) {
-        if (hasTableXpSeed && xpSeed == tableXpSeed) {
+        boolean wasPartial = tableXpSeedPartial && partialLow == PartialXpSeed.lowBits(xpSeed);
+        if (!wasPartial && hasTableXpSeed && !tableXpSeedPartial && xpSeed == tableXpSeed) {
             return; // nothing has happened
         }
-
-        boolean firstEver = !hasTableXpSeed;
+        if (!wasPartial) {
+            seedAppeared();
+        }
         hasTableXpSeed = true;
-        int previous = tableXpSeed;
         tableXpSeed = xpSeed;
+        tableXpSeedPartial = false;
+        partialSet = null;
+        partialCount = -1;
+        seedKnown();
+    }
 
+    /** What is known of the table's current XP seed: one value, a few, or null. */
+    private int[] currentKnowledge() {
+        if (tableXpSeedPartial) {
+            return partialSet;
+        }
+        return hasTableXpSeed ? new int[]{tableXpSeed} : null;
+    }
+
+    /**
+     * A new XP seed is on the table: the player just enchanted (or it is the first one seen).
+     * The one it replaces becomes the pending seed to pair it with. Call before recording it.
+     */
+    private void seedAppeared() {
+        boolean first = !seenTableSeed;
+        int[] previous = currentStale ? null : currentKnowledge();
+        int previousDrops = seedChangeDrops;
+        seenTableSeed = true;
+        seedChangeDrops = itemsDropped;
         if (source == Source.DIRECT) {
             return; // the world itself is the source of truth; nothing to infer
         }
-
-        if (staleXpSeed) {
-            if (firstEver) {
-                statusMessage = "New session: this XP seed is from before you joined or respawned. "
-                        + "Enchant twice to lock the new generator.";
-                return;
-            }
-            // First enchantment on the new generator: this is XP seed 1.
-            staleXpSeed = false;
-            hasPendingXpSeed = true;
-            pendingXpSeed = xpSeed;
-            pendingDropBaseline = itemsDropped;
-            status = Status.AWAITING_SECOND;
-            statusMessage = "Captured XP seed " + PlayerSeed.formatXpSeed(xpSeed)
-                    + ". Enchant again, or throw an item, to lock the seed.";
+        if (first) {
+            currentStale = staleXpSeed;
+            currentFirst = true;
             return;
         }
+        if (status != Status.LOCKED) {
+            if (pendingIsCurrent) {
+                pendingIsCurrent = false; // the cracked seed was the one just replaced: keep it
+            } else {
+                pendingSet = previous;
+                pendingDropBaseline = previousDrops;
+            }
+        }
+        // First enchantment on a new generator: the seed it replaced was only a baseline.
+        staleXpSeed = false;
+        currentStale = false;
+        currentFirst = false;
+    }
 
+    /** Something more is known about the table's current XP seed: act on it. */
+    private void seedKnown() {
+        if (source == Source.DIRECT) {
+            return;
+        }
+        int[] current = currentKnowledge();
+        if (current == null) {
+            return;
+        }
+        if (currentStale) {
+            statusMessage = "New session: this XP seed is from before you joined or respawned. "
+                    + "Enchant twice to lock the new generator.";
+            return;
+        }
         if (status == Status.LOCKED) {
-            if (firstEver) {
-                // The table reports the XP seed from the *last* enchantment, which is only
-                // the current RNG state if nothing has been dropped since. Take it as a
-                // baseline and wait for it to actually change before concluding anything.
-                return;
+            if (!currentFirst) {
+                resync(current);
             }
-            // The XP seed changed, so an enchantment happened: at least one step. Find how many.
-            int extra = PlayerSeed.stepsUntilXpSeed(PlayerSeed.next(playerSeed), xpSeed, RESYNC_WINDOW);
-            if (extra >= 0) {
-                int steps = extra + 1;
-                playerSeed = PlayerSeed.advance(playerSeed, steps);
-                driftSteps += extra;
-                statusMessage = extra == 0
-                        ? "In sync."
-                        : "Re-synced: " + extra + " unexpected RNG step" + (extra == 1 ? "" : "s") + " caught up.";
-                return;
-            }
-            // Too far gone to recover; start again from this seed.
-            status = Status.AWAITING_SECOND;
-            source = Source.NONE;
-            playerSeed = PlayerSeed.UNKNOWN;
-            hasPendingXpSeed = true;
-            pendingXpSeed = xpSeed;
-            pendingDropBaseline = itemsDropped;
-            statusMessage = "Lost track of the RNG. Enchant once more, or throw an item, to re-lock.";
+            // Otherwise the table reports the XP seed from the *last* enchantment, which is only
+            // the current RNG state if nothing has been dropped since. Take it as a baseline and
+            // wait for it to actually change before concluding anything.
             return;
         }
-
-        if (hasPendingXpSeed && !firstEver) {
-            long solved = PlayerSeed.solve(pendingXpSeed, xpSeed);
-            if (solved != PlayerSeed.UNKNOWN) {
-                playerSeed = solved;
-                status = Status.LOCKED;
-                source = Source.TWO_SEEDS;
-                driftSteps = 0;
-                hasPendingXpSeed = false;
-                statusMessage = "Player seed locked from two XP seeds.";
-                return;
-            }
-            // The two seeds are not consecutive, so something else used the RNG in between.
-            pendingXpSeed = xpSeed;
-            pendingDropBaseline = itemsDropped;
-            statusMessage = "Those two XP seeds were not consecutive. Enchant again, "
-                    + "and avoid dropping items or taking damage in between.";
-            return;
-        }
-
-        hasPendingXpSeed = true;
-        pendingXpSeed = xpSeed;
-        pendingDropBaseline = itemsDropped;
         status = Status.AWAITING_SECOND;
-        statusMessage = previous == xpSeed
-                ? statusMessage
-                : "Captured XP seed " + PlayerSeed.formatXpSeed(xpSeed)
-                        + ". Enchant again, or throw an item, to lock the seed.";
+        if (pendingSet == null) {
+            statusMessage = current.length == 1
+                    ? "Captured XP seed " + PlayerSeed.formatXpSeed(current[0])
+                    + ". Enchant again, or throw an item, to lock the seed."
+                    : current.length + " XP seeds fit this table. Enchant something to lock the seed.";
+            return;
+        }
+        if ((long) pendingSet.length * current.length > PAIR_LIMIT) {
+            statusMessage = pendingSet.length + " x " + current.length + " XP seeds still fit. Put a different "
+                    + "item in the table to narrow it down.";
+            return;
+        }
+        // One step for the enchantment, four for every item dropped between the two.
+        int dropsBetween = Math.max(0, seedChangeDrops - pendingDropBaseline);
+        long[] solved = PlayerSeed.solveSets(pendingSet, current,
+                PlayerSeed.STEPS_PER_ENCHANT + dropsBetween * PlayerSeed.STEPS_PER_ITEM_DROP);
+        if (solved.length == 1) {
+            lock(solved[0]);
+            return;
+        }
+        if (solved.length > 1) {
+            statusMessage = "More than one seed fits so far. Put a different item in the table to narrow it down.";
+        } else if (pendingSet.length == 1 && current.length == 1) {
+            // The two seeds are not consecutive, so something else used the RNG in between.
+            statusMessage = "Those two XP seeds were not consecutive. Enchant again, "
+                    + "and avoid taking damage in between.";
+        } else {
+            statusMessage = "No seed links the last two enchantments; something else used the RNG. Enchant again.";
+        }
+    }
+
+    /** Locks onto {@code state}, the RNG right after the table's current XP seed was drawn. */
+    private void lock(long state) {
+        int late = itemsDropped - seedChangeDrops;
+        playerSeed = PlayerSeed.advance(state, late * PlayerSeed.STEPS_PER_ITEM_DROP);
+        status = Status.LOCKED;
+        source = Source.TWO_SEEDS;
+        driftSteps = 0;
+        pendingSet = null;
+        pendingIsCurrent = false;
+        hasTableXpSeed = true;
+        tableXpSeed = PlayerSeed.xpSeedOf(state);
+        tableXpSeedPartial = false;
+        partialSet = null;
+        partialCount = -1;
+        statusMessage = "Player seed locked from two XP seeds.";
+    }
+
+    /** The seed is locked and the table moved on to a new XP seed: find how many steps it took. */
+    private void resync(int[] current) {
+        int late = itemsDropped - seedChangeDrops;
+        // The enchantment came before the drops made since the seed appeared.
+        long before = PlayerSeed.advance(playerSeed, -late * PlayerSeed.STEPS_PER_ITEM_DROP);
+        int extra = -1;
+        if (current.length == 1) {
+            extra = PlayerSeed.stepsUntilXpSeed(PlayerSeed.next(before), current[0], RESYNC_WINDOW);
+        } else if (current.length <= RESYNC_SET_LIMIT) {
+            int[] sorted = current.clone();
+            java.util.Arrays.sort(sorted);
+            long seed = PlayerSeed.next(before);
+            for (int steps = 0; steps <= RESYNC_WINDOW; steps++, seed = PlayerSeed.next(seed)) {
+                if (java.util.Arrays.binarySearch(sorted, PlayerSeed.xpSeedOf(seed)) >= 0) {
+                    extra = steps;
+                    break;
+                }
+            }
+        } else {
+            return; // too many candidates to search safely; wait for a narrower view
+        }
+        if (extra >= 0) {
+            long made = PlayerSeed.advance(before, extra + 1);
+            playerSeed = PlayerSeed.advance(made, late * PlayerSeed.STEPS_PER_ITEM_DROP);
+            driftSteps += extra;
+            hasTableXpSeed = true;
+            tableXpSeed = PlayerSeed.xpSeedOf(made);
+            tableXpSeedPartial = false;
+            partialSet = null;
+            partialCount = -1;
+            statusMessage = extra == 0
+                    ? "In sync."
+                    : "Re-synced: " + extra + " unexpected RNG step" + (extra == 1 ? "" : "s") + " caught up.";
+            return;
+        }
+        if (current.length > 1) {
+            return; // not found among these; an exact view will decide
+        }
+        // Too far gone to recover; start again from this seed.
+        status = Status.AWAITING_SECOND;
+        source = Source.NONE;
+        playerSeed = PlayerSeed.UNKNOWN;
+        pendingSet = null;
+        statusMessage = "Lost track of the RNG. Enchant once more, or throw an item, to re-lock.";
     }
 
     /**
@@ -346,26 +544,35 @@ public final class CrackerState {
      * @return true when the seed became locked.
      */
     public synchronized boolean observeThrowVelocity(VelocityCracker.Velocity velocity, float yaw, float pitch) {
-        if (source == Source.DIRECT || status == Status.LOCKED || !hasPendingXpSeed) {
+        if (source == Source.DIRECT || status == Status.LOCKED) {
             return false; // own world is already exact; a locked seed needs nothing from a throw
+        }
+        // The XP seed the throw follows: the table's current one (or a cracked one).
+        int[] xpSeeds = pendingIsCurrent ? pendingSet : currentStale ? null : currentKnowledge();
+        int baseline = pendingIsCurrent ? pendingDropBaseline : seedChangeDrops;
+        if (xpSeeds == null || xpSeeds.length > 16) {
+            return false;
         }
         // The step offset is how many of the player's own RNG steps were spent between the enchant
         // and this throw's first nextFloat: four per item dropped since. That count comes from the
         // drop counter (fed by the toss/drop-key path), not from how many entities appeared near
         // us, so a stray item on the ground cannot corrupt it. This drop may or may not be counted
         // yet when its velocity is read, so both offsets are tried; the item picks the right one.
-        int droppedSince = Math.max(0, itemsDropped - pendingDropBaseline);
+        int droppedSince = Math.max(0, itemsDropped - baseline);
         java.util.LinkedHashSet<Long> candidates = new java.util.LinkedHashSet<>();
         int[] offsets = {Math.max(0, droppedSince - 1) * PlayerSeed.STEPS_PER_ITEM_DROP,
                 droppedSince * PlayerSeed.STEPS_PER_ITEM_DROP};
-        for (int steps : offsets) {
-            candidates.addAll(VelocityCracker.solveFromXpSeed(pendingXpSeed, steps, velocity, yaw, pitch));
+        for (int xpSeed : xpSeeds) {
+            for (int steps : offsets) {
+                candidates.addAll(VelocityCracker.solveFromXpSeed(xpSeed, steps, velocity, yaw, pitch));
+            }
         }
         if (candidates.size() == 1) {
             playerSeed = candidates.iterator().next();
             status = Status.LOCKED;
             source = Source.VELOCITY;
-            hasPendingXpSeed = false;
+            pendingSet = null;
+            pendingIsCurrent = false;
             driftSteps = 0;
             statusMessage = "Locked from a thrown item's velocity — no second enchantment needed.";
             return true;
@@ -409,11 +616,19 @@ public final class CrackerState {
         status = Status.UNKNOWN;
         source = Source.NONE;
         hasTableXpSeed = false;
-        hasPendingXpSeed = false;
-        pendingDropBaseline = itemsDropped;
+        tableXpSeedPartial = false;
+        partialCount = -1;
+        partialSet = null;
+        seenTableSeed = false;
+        currentStale = false;
+        currentFirst = false;
+        pendingSet = null;
+        pendingIsCurrent = false;
         staleXpSeed = false;
         lastSeenXpSeed = null;
         itemsDropped = 0;
+        seedChangeDrops = 0;
+        pendingDropBaseline = 0;
         driftSteps = 0;
         plan = null;
         planOptions = new ArrayList<>();
@@ -434,7 +649,14 @@ public final class CrackerState {
         status = Status.UNKNOWN;
         source = Source.NONE;
         hasTableXpSeed = false;
-        hasPendingXpSeed = false;
+        tableXpSeedPartial = false;
+        partialCount = -1;
+        partialSet = null;
+        seenTableSeed = false;
+        currentStale = false;
+        currentFirst = false;
+        pendingSet = null;
+        pendingIsCurrent = false;
         pendingDropBaseline = itemsDropped;
         staleXpSeed = true;
         lastSeenXpSeed = null;
@@ -451,7 +673,7 @@ public final class CrackerState {
     /** Everything worth keeping for one world or server, as plain strings. */
     public synchronized Map<String, String> exportProfile() {
         Map<String, String> out = new LinkedHashMap<>();
-        if (hasTableXpSeed) {
+        if (hasTableXpSeed && !tableXpSeedPartial) {
             out.put("xpSeed", PlayerSeed.formatXpSeed(tableXpSeed));
         }
         out.put("item", selectedItem);
@@ -503,7 +725,12 @@ public final class CrackerState {
         Integer xp = PlayerSeed.parseXpSeed(in.get("xpSeed"));
         if (xp != null && source != Source.DIRECT) {
             hasTableXpSeed = true;
+            tableXpSeedPartial = false;
             tableXpSeed = xp;
+            // Saved with the player, so it survives the relog, but the generator did not: a baseline.
+            seenTableSeed = true;
+            currentStale = staleXpSeed;
+            currentFirst = true;
         }
         plan = null;
         planOptions = new ArrayList<>();
