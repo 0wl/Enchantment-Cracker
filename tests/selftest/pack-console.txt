@@ -1,0 +1,308 @@
+launching the full pack (334 mods) with C:\Users\mexic\Desktop\Enchantment Cracker Mod\output\enchcracker-1.2.7-forge-1.16.5.jar
+exit 0
+Enchantment Cracker: the whole DDSS2 pack, singleplayer (seed read directly)
+joined the world
+built a Mahogany Bookshelf table at BlockPos{x=3, y=74, z=-167}
+PASS table open
+PASS seed read directly
+table reads Apotheosis E15.0 Q15% A0%+
+PASS the table reads like the user's (E15 Q15)
+a quiet minute at the table (spy watching)
+PASS diamond_boots: table reads cleanly (problem: null)
+PASS diamond_boots slot 1 level 10 vs table 10 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_boots slot 1 predicted [projectile_protection:2], got [projectile_protection:2]
+PASS diamond_boots: table reads cleanly (problem: null)
+PASS diamond_boots slot 2 level 20 vs table 20 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_boots slot 2 predicted [cyclic:magnet:1], got [cyclic:magnet:1]
+PASS diamond_boots: table reads cleanly (problem: null)
+PASS diamond_boots slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_boots slot 3 predicted [protection:3], got [protection:3]
+PASS diamond_leggings: table reads cleanly (problem: null)
+PASS diamond_leggings slot 1 level 7 vs table 7 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_leggings slot 1 predicted [unbreaking:1], got [unbreaking:1]
+PASS diamond_leggings: table reads cleanly (problem: null)
+PASS diamond_leggings slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_leggings slot 2 predicted [ensorcellation:magic_protection:2, cyclic:step:1], got [ensorcellation:magic_protection:2, cyclic:step:1]
+PASS diamond_leggings: table reads cleanly (problem: null)
+PASS diamond_leggings slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_leggings slot 3 predicted [fire_protection:3], got [fire_protection:3]
+PASS diamond_chestplate: table reads cleanly (problem: null)
+PASS diamond_chestplate slot 1 level 6 vs table 6 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_chestplate slot 1 predicted [protection:1], got [protection:1]
+PASS diamond_chestplate: table reads cleanly (problem: null)
+PASS diamond_chestplate slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_chestplate slot 2 predicted [wrd:reinforced_chestplate:1, cyclic:magnet:1], got [wrd:reinforced_chestplate:1, cyclic:magnet:1]
+PASS diamond_chestplate: table reads cleanly (problem: null)
+PASS diamond_chestplate slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_chestplate slot 3 predicted [cyclic:curse:1], got [cyclic:curse:1]
+PASS diamond_helmet: table reads cleanly (problem: null)
+PASS diamond_helmet slot 1 level 8 vs table 8 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_helmet slot 1 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS diamond_helmet: table reads cleanly (problem: null)
+PASS diamond_helmet slot 2 level 22 vs table 22 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_helmet slot 2 predicted [betterendforge:end_veil:1], got [betterendforge:end_veil:1]
+PASS diamond_helmet: table reads cleanly (problem: null)
+PASS diamond_helmet slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_helmet slot 3 predicted [protection:3, ensorcellation:soulbound:1, ensorcellation:air_affinity:1], got [protection:3, ensorcellation:soulbound:1, ensorcellation:air_affinity:1]
+PASS diamond_sword: table reads cleanly (problem: null)
+PASS diamond_sword slot 1 level 10 vs table 10 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_sword slot 1 predicted [smite:1], got [smite:1]
+PASS diamond_sword: table reads cleanly (problem: null)
+PASS diamond_sword slot 2 level 21 vs table 21 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_sword slot 2 predicted [apotheosis:bane_of_illagers:3], got [apotheosis:bane_of_illagers:3]
+PASS diamond_sword: table reads cleanly (problem: null)
+PASS diamond_sword slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_sword slot 3 predicted [bane_of_arthropods:4, ensorcellation:soulbound:1], got [bane_of_arthropods:4, ensorcellation:soulbound:1]
+PASS diamond_pickaxe: table reads cleanly (problem: null)
+PASS diamond_pickaxe slot 1 level 8 vs table 8 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_pickaxe slot 1 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS diamond_pickaxe: table reads cleanly (problem: null)
+PASS diamond_pickaxe slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_pickaxe slot 2 predicted [evilcraft:unusing:1, fortune:1], got [evilcraft:unusing:1, fortune:1]
+PASS diamond_pickaxe: table reads cleanly (problem: null)
+PASS diamond_pickaxe slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_pickaxe slot 3 predicted [efficiency:3, unbreaking:3], got [efficiency:3, unbreaking:3]
+PASS diamond_axe: table reads cleanly (problem: null)
+PASS diamond_axe slot 1 level 12 vs table 12 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_axe slot 1 predicted [fire_aspect:1], got [fire_aspect:1]
+PASS diamond_axe: table reads cleanly (problem: null)
+PASS diamond_axe slot 2 level 20 vs table 20 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_axe slot 2 predicted [efficiency:3], got [efficiency:3]
+PASS diamond_axe: table reads cleanly (problem: null)
+PASS diamond_axe slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_axe slot 3 predicted [fortune:2], got [fortune:2]
+PASS diamond_shovel: table reads cleanly (problem: null)
+PASS diamond_shovel slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_shovel slot 1 predicted [efficiency:1], got [efficiency:1]
+PASS diamond_shovel: table reads cleanly (problem: null)
+PASS diamond_shovel slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_shovel slot 2 predicted [efficiency:2, ensorcellation:soulbound:1], got [efficiency:2, ensorcellation:soulbound:1]
+PASS diamond_shovel: table reads cleanly (problem: null)
+PASS diamond_shovel slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_shovel slot 3 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS bow: table reads cleanly (problem: null)
+PASS bow slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS bow slot 1 predicted [power:1], got [power:1]
+PASS bow: table reads cleanly (problem: null)
+PASS bow slot 2 level 21 vs table 21 (Apotheosis E15.0 Q15% A0%+)
+PASS bow slot 2 predicted [ensorcellation:quick_draw:1, cyclic:multishot:1, ensorcellation:soulbound:1], got [ensorcellation:quick_draw:1, cyclic:multishot:1, ensorcellation:soulbound:1]
+PASS bow: table reads cleanly (problem: null)
+PASS bow slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS bow slot 3 predicted [power:4], got [power:4]
+PASS crossbow: table reads cleanly (problem: null)
+PASS crossbow slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS crossbow slot 1 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS crossbow: table reads cleanly (problem: null)
+PASS crossbow slot 2 level 23 vs table 23 (Apotheosis E15.0 Q15% A0%+)
+PASS crossbow slot 2 predicted [unbreaking:3, cyclic:magnet:2], got [unbreaking:3, cyclic:magnet:2]
+PASS crossbow: table reads cleanly (problem: null)
+PASS crossbow slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS crossbow slot 3 predicted [evilcraft:unusing:1, unbreaking:3], got [evilcraft:unusing:1, unbreaking:3]
+PASS trident: table reads cleanly (problem: null)
+PASS trident slot 1 level 11 vs table 11 (Apotheosis E15.0 Q15% A0%+)
+PASS trident slot 1 predicted [piercing:2, apotheosis:spearfishing:1], got [piercing:2, apotheosis:spearfishing:1]
+PASS trident: table reads cleanly (problem: null)
+PASS trident slot 2 level 24 vs table 24 (Apotheosis E15.0 Q15% A0%+)
+PASS trident slot 2 predicted [evilcraft:unusing:1, piercing:3], got [evilcraft:unusing:1, piercing:3]
+PASS trident: table reads cleanly (problem: null)
+PASS trident slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS trident slot 3 predicted [sharpness:3, piercing:4], got [sharpness:3, piercing:4]
+PASS fishing_rod: table reads cleanly (problem: null)
+PASS fishing_rod slot 1 level 11 vs table 11 (Apotheosis E15.0 Q15% A0%+)
+PASS fishing_rod slot 1 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS fishing_rod: table reads cleanly (problem: null)
+PASS fishing_rod slot 2 level 24 vs table 24 (Apotheosis E15.0 Q15% A0%+)
+PASS fishing_rod slot 2 predicted [unbreaking:3, luck_of_the_sea:2], got [unbreaking:3, luck_of_the_sea:2]
+PASS fishing_rod: table reads cleanly (problem: null)
+PASS fishing_rod slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS fishing_rod slot 3 predicted [unbreaking:3, lure:2], got [unbreaking:3, lure:2]
+PASS book: table reads cleanly (problem: null)
+PASS book slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS book slot 1 predicted [efficiency:1], got [efficiency:1]
+PASS book: table reads cleanly (problem: null)
+PASS book slot 2 level 24 vs table 24 (Apotheosis E15.0 Q15% A0%+)
+PASS book slot 2 predicted [evilcraft:vengeance:3], got [evilcraft:vengeance:3]
+PASS book: table reads cleanly (problem: null)
+PASS book slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS book slot 3 predicted [apotheosis:spearfishing:2], got [apotheosis:spearfishing:2]
+PASS iron_chestplate: table reads cleanly (problem: null)
+PASS iron_chestplate slot 1 level 8 vs table 8 (Apotheosis E15.0 Q15% A0%+)
+PASS iron_chestplate slot 1 predicted [blast_protection:1], got [blast_protection:1]
+PASS iron_chestplate: table reads cleanly (problem: null)
+PASS iron_chestplate slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS iron_chestplate slot 2 predicted [blast_protection:2, ensorcellation:soulbound:1], got [blast_protection:2, ensorcellation:soulbound:1]
+PASS iron_chestplate: table reads cleanly (problem: null)
+PASS iron_chestplate slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS iron_chestplate slot 3 predicted [blast_protection:4, wrd:reinforced_chestplate:2], got [blast_protection:4, wrd:reinforced_chestplate:2]
+PASS golden_helmet: table reads cleanly (problem: null)
+PASS golden_helmet slot 1 level 10 vs table 10 (Apotheosis E15.0 Q15% A0%+)
+PASS golden_helmet slot 1 predicted [ensorcellation:magic_protection:1], got [ensorcellation:magic_protection:1]
+PASS golden_helmet: table reads cleanly (problem: null)
+PASS golden_helmet slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS golden_helmet slot 2 predicted [respiration:2], got [respiration:2]
+PASS golden_helmet: table reads cleanly (problem: null)
+PASS golden_helmet slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS golden_helmet slot 3 predicted [protection:4, wrd:hard_headded:1], got [protection:4, wrd:hard_headded:1]
+PASS diamond_boots: table reads cleanly (problem: null)
+PASS diamond_boots slot 1 level 7 vs table 7 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_boots slot 1 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS diamond_boots: table reads cleanly (problem: null)
+PASS diamond_boots slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_boots slot 2 predicted [wrd:reinforced:1], got [wrd:reinforced:1]
+PASS diamond_boots: table reads cleanly (problem: null)
+PASS diamond_boots slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_boots slot 3 predicted [unbreaking:3, protection:3, ensorcellation:soulbound:1], got [unbreaking:3, protection:3, ensorcellation:soulbound:1]
+PASS diamond_leggings: table reads cleanly (problem: null)
+PASS diamond_leggings slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_leggings slot 1 predicted [projectile_protection:2], got [projectile_protection:2]
+PASS diamond_leggings: table reads cleanly (problem: null)
+PASS diamond_leggings slot 2 level 23 vs table 23 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_leggings slot 2 predicted [ensorcellation:magic_protection:2], got [ensorcellation:magic_protection:2]
+PASS diamond_leggings: table reads cleanly (problem: null)
+PASS diamond_leggings slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_leggings slot 3 predicted [blast_protection:4], got [blast_protection:4]
+PASS diamond_chestplate: table reads cleanly (problem: null)
+PASS diamond_chestplate slot 1 level 10 vs table 10 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_chestplate slot 1 predicted [fire_protection:1, ensorcellation:soulbound:1], got [fire_protection:1, ensorcellation:soulbound:1]
+PASS diamond_chestplate: table reads cleanly (problem: null)
+PASS diamond_chestplate slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_chestplate slot 2 predicted [fire_protection:2], got [fire_protection:2]
+PASS diamond_chestplate: table reads cleanly (problem: null)
+PASS diamond_chestplate slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_chestplate slot 3 predicted [unbreaking:3, projectile_protection:4, wrd:reinforced_chestplate:2], got [unbreaking:3, projectile_protection:4, wrd:reinforced_chestplate:2]
+PASS diamond_helmet: table reads cleanly (problem: null)
+PASS diamond_helmet slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_helmet slot 1 predicted [unbreaking:1, protection:1], got [unbreaking:1, protection:1]
+PASS diamond_helmet: table reads cleanly (problem: null)
+PASS diamond_helmet slot 2 level 22 vs table 22 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_helmet slot 2 predicted [cyclic:magnet:1], got [cyclic:magnet:1]
+PASS diamond_helmet: table reads cleanly (problem: null)
+PASS diamond_helmet slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_helmet slot 3 predicted [projectile_protection:4, ensorcellation:air_affinity:1], got [projectile_protection:4, ensorcellation:air_affinity:1]
+PASS diamond_sword: table reads cleanly (problem: null)
+PASS diamond_sword slot 1 level 11 vs table 11 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_sword slot 1 predicted [cyclic:venom:1, bane_of_arthropods:1], got [cyclic:venom:1, bane_of_arthropods:1]
+PASS diamond_sword: table reads cleanly (problem: null)
+PASS diamond_sword slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_sword slot 2 predicted [cyclic:ender:1, evilcraft:life_stealing:1, bane_of_arthropods:2], got [cyclic:ender:1, evilcraft:life_stealing:1, bane_of_arthropods:2]
+PASS diamond_sword: table reads cleanly (problem: null)
+PASS diamond_sword slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_sword slot 3 predicted [knockback:2], got [knockback:2]
+PASS diamond_pickaxe: table reads cleanly (problem: null)
+PASS diamond_pickaxe slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_pickaxe slot 1 predicted [efficiency:1], got [efficiency:1]
+PASS diamond_pickaxe: table reads cleanly (problem: null)
+PASS diamond_pickaxe slot 2 level 22 vs table 22 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_pickaxe slot 2 predicted [silentgems:gravity:1, travel_anchors:teleportation:1], got [silentgems:gravity:1, travel_anchors:teleportation:1]
+PASS diamond_pickaxe: table reads cleanly (problem: null)
+PASS diamond_pickaxe slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_pickaxe slot 3 predicted [apotheosis:depth_miner:1, ensorcellation:soulbound:1], got [apotheosis:depth_miner:1, ensorcellation:soulbound:1]
+PASS diamond_axe: table reads cleanly (problem: null)
+PASS diamond_axe slot 1 level 12 vs table 12 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_axe slot 1 predicted [fire_aspect:1], got [fire_aspect:1]
+PASS diamond_axe: table reads cleanly (problem: null)
+PASS diamond_axe slot 2 level 20 vs table 20 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_axe slot 2 predicted [knockback:1], got [knockback:1]
+PASS diamond_axe: table reads cleanly (problem: null)
+PASS diamond_axe slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_axe slot 3 predicted [efficiency:4, unbreaking:3, fire_aspect:2], got [efficiency:4, unbreaking:3, fire_aspect:2]
+PASS diamond_shovel: table reads cleanly (problem: null)
+PASS diamond_shovel slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_shovel slot 1 predicted [efficiency:1], got [efficiency:1]
+PASS diamond_shovel: table reads cleanly (problem: null)
+PASS diamond_shovel slot 2 level 21 vs table 21 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_shovel slot 2 predicted [evilcraft:unusing:1, cyclic:auto_smelt:1], got [evilcraft:unusing:1, cyclic:auto_smelt:1]
+PASS diamond_shovel: table reads cleanly (problem: null)
+PASS diamond_shovel slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS diamond_shovel slot 3 predicted [efficiency:3], got [efficiency:3]
+PASS bow: table reads cleanly (problem: null)
+PASS bow slot 1 level 6 vs table 6 (Apotheosis E15.0 Q15% A0%+)
+PASS bow slot 1 predicted [power:1, ensorcellation:soulbound:1], got [power:1, ensorcellation:soulbound:1]
+PASS bow: table reads cleanly (problem: null)
+PASS bow slot 2 level 23 vs table 23 (Apotheosis E15.0 Q15% A0%+)
+PASS bow slot 2 predicted [unbreaking:3, ensorcellation:quick_draw:1], got [unbreaking:3, ensorcellation:quick_draw:1]
+PASS bow: table reads cleanly (problem: null)
+PASS bow slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS bow slot 3 predicted [ensorcellation:trueshot:2], got [ensorcellation:trueshot:2]
+PASS crossbow: table reads cleanly (problem: null)
+PASS crossbow slot 1 level 11 vs table 11 (Apotheosis E15.0 Q15% A0%+)
+PASS crossbow slot 1 predicted [piercing:2, ensorcellation:soulbound:1], got [piercing:2, ensorcellation:soulbound:1]
+PASS crossbow: table reads cleanly (problem: null)
+PASS crossbow slot 2 level 20 vs table 20 (Apotheosis E15.0 Q15% A0%+)
+PASS crossbow slot 2 predicted [unbreaking:3, piercing:3], got [unbreaking:3, piercing:3]
+PASS crossbow: table reads cleanly (problem: null)
+PASS crossbow slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS crossbow slot 3 predicted [piercing:3], got [piercing:3]
+PASS trident: table reads cleanly (problem: null)
+PASS trident slot 1 level 6 vs table 6 (Apotheosis E15.0 Q15% A0%+)
+PASS trident slot 1 predicted [sharpness:1], got [sharpness:1]
+PASS trident: table reads cleanly (problem: null)
+PASS trident slot 2 level 19 vs table 19 (Apotheosis E15.0 Q15% A0%+)
+PASS trident slot 2 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS trident: table reads cleanly (problem: null)
+PASS trident slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS trident slot 3 predicted [loyalty:3, apotheosis:spearfishing:2], got [loyalty:3, apotheosis:spearfishing:2]
+PASS fishing_rod: table reads cleanly (problem: null)
+PASS fishing_rod slot 1 level 10 vs table 10 (Apotheosis E15.0 Q15% A0%+)
+PASS fishing_rod slot 1 predicted [ensorcellation:soulbound:1], got [ensorcellation:soulbound:1]
+PASS fishing_rod: table reads cleanly (problem: null)
+PASS fishing_rod slot 2 level 23 vs table 23 (Apotheosis E15.0 Q15% A0%+)
+PASS fishing_rod slot 2 predicted [lure:1, unbreaking:3, ensorcellation:soulbound:1], got [lure:1, unbreaking:3, ensorcellation:soulbound:1]
+PASS fishing_rod: table reads cleanly (problem: null)
+PASS fishing_rod slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS fishing_rod slot 3 predicted [unbreaking:3, lure:2, ensorcellation:soulbound:1], got [unbreaking:3, lure:2, ensorcellation:soulbound:1]
+PASS book: table reads cleanly (problem: null)
+PASS book slot 1 level 10 vs table 10 (Apotheosis E15.0 Q15% A0%+)
+PASS book slot 1 predicted [piercing:2], got [piercing:2]
+PASS book: table reads cleanly (problem: null)
+PASS book slot 2 level 20 vs table 20 (Apotheosis E15.0 Q15% A0%+)
+PASS book slot 2 predicted [projectile_protection:4, power:3], got [projectile_protection:4, power:3]
+PASS book: table reads cleanly (problem: null)
+PASS book slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS book slot 3 predicted [cyclic:venom:2, betterendforge:end_veil:1], got [cyclic:venom:2, betterendforge:end_veil:1]
+PASS iron_chestplate: table reads cleanly (problem: null)
+PASS iron_chestplate slot 1 level 11 vs table 11 (Apotheosis E15.0 Q15% A0%+)
+PASS iron_chestplate slot 1 predicted [fire_protection:1], got [fire_protection:1]
+PASS iron_chestplate: table reads cleanly (problem: null)
+PASS iron_chestplate slot 2 level 21 vs table 21 (Apotheosis E15.0 Q15% A0%+)
+PASS iron_chestplate slot 2 predicted [fire_protection:2], got [fire_protection:2]
+PASS iron_chestplate: table reads cleanly (problem: null)
+PASS iron_chestplate slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS iron_chestplate slot 3 predicted [unbreaking:3], got [unbreaking:3]
+PASS golden_helmet: table reads cleanly (problem: null)
+PASS golden_helmet slot 1 level 9 vs table 9 (Apotheosis E15.0 Q15% A0%+)
+PASS golden_helmet slot 1 predicted [protection:1, aqua_affinity:1], got [protection:1, aqua_affinity:1]
+PASS golden_helmet: table reads cleanly (problem: null)
+PASS golden_helmet slot 2 level 21 vs table 21 (Apotheosis E15.0 Q15% A0%+)
+PASS golden_helmet slot 2 predicted [evilcraft:unusing:1], got [evilcraft:unusing:1]
+PASS golden_helmet: table reads cleanly (problem: null)
+PASS golden_helmet slot 3 level 30 vs table 30 (Apotheosis E15.0 Q15% A0%+)
+PASS golden_helmet slot 3 predicted [fire_protection:3, unbreaking:3], got [fire_protection:3, unbreaking:3]
+PASS planner ready (null)
+  plan: diamond_boots [protection IV, unbreaking III, feather_falling IV] -> drop 103, dummy true, slot 3, gives [unbreaking III, protection IV, feather_falling IV]
+PASS drops 103 == planned 103
+PASS tracked seed == the world's D22ADF0B2961
+PASS stage FINAL: FINAL
+PASS no final-step warning
+PASS 1:1 diamond_boots: planned [feather_falling:4, unbreaking:3, protection:4], got [feather_falling:4, unbreaking:3, protection:4]
+PASS planner ready (null)
+  plan: diamond_leggings [protection IV, unbreaking III] -> drop 15, dummy true, slot 3, gives [protection IV, cyclic:magnet III, unbreaking III]
+PASS drops 15 == planned 15
+PASS tracked seed == the world's 33343D52D6B5
+PASS stage FINAL: FINAL
+PASS no final-step warning
+PASS 1:1 diamond_leggings: planned [protection:4, unbreaking:3, cyclic:magnet:3], got [protection:4, unbreaking:3, cyclic:magnet:3]
+PASS planner ready (null)
+  plan: diamond_chestplate [protection IV, unbreaking III] -> drop 33, dummy true, slot 3, gives [protection IV, wrd:reinforced_chestplate II, unbreaking III]
+PASS drops 33 == planned 33
+PASS tracked seed == the world's 379E11EB86F1
+PASS stage FINAL: FINAL
+PASS no final-step warning
+PASS 1:1 diamond_chestplate: planned [protection:4, unbreaking:3, wrd:reinforced_chestplate:2], got [protection:4, unbreaking:3, wrd:reinforced_chestplate:2]
+PASS planner ready (null)
+  diamond_boots [protection IV, unbreaking III, feather_falling IV]: no plan within 1100 drops, skipped
+
+predicted enchantments checked: 90, plans delivered exactly: 3
+passed 292, failed 0
+SELFTEST OK
+

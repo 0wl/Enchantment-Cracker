@@ -10,7 +10,7 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 ## Install
 
 1. Install **Forge 1.16.5** (36.x).
-2. Drop `enchcracker-1.2.6-forge-1.16.5.jar` into your `mods` folder.
+2. Drop `enchcracker-1.2.7-forge-1.16.5.jar` into your `mods` folder.
 3. Launch. Press **K** in game.
 
 ## What it does
@@ -20,11 +20,12 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 | **Reads the seed automatically** | In your own world (singleplayer or LAN host) the mod reads the player's random number generator straight out of the running game. Always exact. |
 | **Solves it from two XP seeds** | As a LAN guest or on a server, two XP seeds taken one enchantment apart pin down the full 48-bit state. The server only shares half of each XP seed with your game; the mod works out the rest from the table's numbers and hints (Apotheosis's extra hints included), and items dropped along the way are allowed for. |
 | **Locks it in one click** | On a server, the table gets a *Lock seed* button: it enchants plain books in slot 1 (1 level and 1 lapis each) until the seed is locked, usually after two. |
-| **Locks it from a thrown item** | On a server, after one enchantment, throwing a single item is enough: the launch velocity pins the remaining bits, so you never spend a second enchantment. |
+| **Locks it from a thrown item** | Switched off in this version: a real throw on a LAN world did not match yet. Use *Lock seed* (two cheap book enchantments). |
 | **Brute-forces it the original way** | The classic cracker is still there for vanilla tables. |
 | **Predicts every slot** | Writes the real enchantments of all three slots under the enchanting table screen. |
 | **Searches for one enchantment** | Pick any enchantment a table can give, modded ones included; it picks a fitting item and lists the steps. Filter items by name or mod id instead of stepping through them. |
 | **Plans the manipulation** | Choose a wishlist and it works out how many items to drop, how many bookshelves to use, and which slot to click, with up to three options. Opened in front of a table, it plans for the item in it; a plan is item-specific, so putting a different item in for the final enchantment gets a warning. |
+| **Guards the real enchantment** | While a plan is active, a click on the table that would spoil it is held back with the reason: drops still missing, the real item used as the dummy, the seed not confirmed or not the planned one (something unseen used your random numbers, a `/give` for one), the wrong item, table or slot. Shift-click enchants anyway. |
 | **Drops the items for you** | Pick a junk item once in your inventory; the table gets a *Drop N* button that throws exactly the number the plan needs. |
 | **Reads your enchanting area** | Finds your table and every shelf around it, and outlines in the world which gaps to block to reach the count a plan needs. |
 | **Plans the anvil** | Finds the cheapest order to combine enchanted books onto an item, prior-work penalty included. Can start from the enchanted, already-worked item in your hand. |

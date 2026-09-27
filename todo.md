@@ -39,6 +39,33 @@ Newest first.
     - *Lock seed* button beside the table (servers only): enchants books in slot 1 until locked.
     - The server path writes `[seed]` lines to the game log (seeds appearing, candidates, pairings,
       locks, re-syncs), so a failure on someone's server can be worked through from their log.
+  - 1.2.7, from a plan that missed on the DDSS2 LAN world:
+    - The count said 577 drops, the server made 575. On a server, drops were counted from the
+      client's own simulation of each click, and the server can ignore a click the client already
+      simulated. Now counted from the items the server spawns (`ClientEvents.isOwnDrop`: made at
+      the thrower's x, eye height - 0.3, z), which covers every drop, whatever caused it; the
+      auto dropper aims at that confirmed count and resends only after 3 s without one.
+    - "Dummy done and the table is on the planned seed" was said while the seed was unknown. New
+      CHECKING stage; FINAL now needs the seed confirmed.
+    - Re-sync also searches backwards (up to 512 drops), so a miscount heals instead of losing the lock.
+    - The table screen now holds back an enchant click that would spoil the plan (Shift overrides).
+      Things the client cannot see can still use the RNG: an RNG spy on a LAN host showed `/give`
+      takes two steps (the pickup sound's pitch); being hit, eating and mods can too. The dummy
+      reveals any of that before the real enchantment, and the click is held back.
+    - `Mc.currentScreenPauses` and `McScreen` used `func_231178_ax__` (shouldCloseOnEsc) as
+      isPauseScreen (`func_231177_au__`): auto drop closed the table screen on servers, and the
+      cracker window paused singleplayer. Every SRG name with a readable comment was audited.
+    - The thrown-item lock's model summed the vertical velocity's last term in double where
+      `PlayerEntity#dropItem` stays in float, so real throws often "did not match". Now bit-exact
+      as the server sends it (FeatureTests: 100,000 throws against a literal transcription).
+      A real throw on the LAN test still did not match, so the thrown-item lock is switched off
+      for 1.2.7 (new settings key `velocityLock`, not offered in Settings). Still to find: what
+      differs between the model and a real throw (the yaw/pitch the server used? the velocity
+      packet? the drop offset?). Until then two enchantments lock the seed.
+    - Tested on a real LAN world (host client + guest client, `lanlaunch.py`), with every thrown
+      item picked back up while dropping, and with the whole DDSS2 pack (`packlaunch.py`: 90
+      predictions and the user's wishes delivered 1:1, Soulbound/Magnet/etc. included; an RNG spy
+      found nothing in the pack using the player's generator besides drops, /give and enchanting).
   - Verified against a real dedicated server over TCP (`tests/selftest/netlaunch.py`), with
     `/data get entity <you> XpSeed` as ground truth: Apotheosis 124/124, vanilla 123/123.
 

@@ -5,6 +5,7 @@ import com.enchantmentcracker.core.CrackerState;
 import com.enchantmentcracker.core.EnchantCalculator;
 import com.enchantmentcracker.core.PlayerSeed;
 import com.enchantmentcracker.core.TableSetup;
+import com.enchantmentcracker.game.AutoDropper;
 import com.enchantmentcracker.game.Mc;
 import com.enchantmentcracker.game.TableWatcher;
 import net.minecraft.client.gui.screen.ConnectingScreen;
@@ -41,6 +42,8 @@ import static com.enchantmentcracker.selftest.SelfTest.*;
 final class NetTest {
 
     static final int PORT = Integer.getInteger("enchcracker.selftest.port", 25599);
+    /** Straight to the user's flow (phase 3), for quick diagnostic runs. */
+    static final boolean QUICK = Boolean.getBoolean("enchcracker.selftest.quick");
     static final Pattern XP_SEED = Pattern.compile("has the following entity data: (-?\\d+)");
 
     static volatile int truthXp;
@@ -81,6 +84,20 @@ final class NetTest {
                 table.func_177956_o() + 0.75, table.func_177952_p() + 0.5), Direction.UP, table, false);
         // playerController.processRightClickBlock(player, world, hand, hit)
         mc().field_71442_b.func_217292_a(Mc.player(), mc().field_71441_e, Hand.MAIN_HAND, hit);
+    }
+
+    /** Tops the table's lapis up (Apotheosis keeps it in the table, so it runs down over many enchantments). */
+    static void ensureLapis() {
+        EnchantmentContainer c = tableContainer();
+        if (c == null || c.func_75139_a(1).func_75211_c().func_190916_E() >= 16) {
+            return;
+        }
+        Slot from = find("lapis_lazuli");
+        if (from != null) {
+            click(from.field_75222_d, ClickType.QUICK_MOVE); // shift-click: lapis goes to the lapis slot
+        } else {
+            log("  (no lapis left in the inventory)");
+        }
     }
 
     static void addLapis() {
@@ -141,6 +158,7 @@ final class NetTest {
             if (c != null && !c.func_75139_a(0).func_75211_c().func_190926_b()) {
                 click(0, ClickType.QUICK_MOVE);
             }
+            ensureLapis();
         });
         step(2, () -> {
             place(item, 0);
@@ -291,6 +309,444 @@ final class NetTest {
         reopen();
     }
 
+    // ------------------------------------------------------------------ phase 3: the user's flow
+
+    static int plansMade;
+    static int plansDelivered;
+    static int plansSkipped;
+    static int pickedUpTotal;
+    static int planShelves;
+    static int cobbleBefore;
+
+    /** Every shelf position around the table, bottom row first: 16 per row. */
+    static java.util.List<int[]> ringPositions() {
+        java.util.List<int[]> out = new java.util.ArrayList<>();
+        for (int y = 0; y <= 1; y++) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    if (Math.abs(x) == 2 || Math.abs(z) == 2) {
+                        out.add(new int[]{x, y, z});
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    /** The ring of shelf positions set to {@code block}, in four strips that never touch the table. */
+    static void ring(String block) {
+        cmd("/fill " + p(table, -2, 0, -2) + " " + p(table, -2, 1, 2) + " " + block);
+        cmd("/fill " + p(table, 2, 0, -2) + " " + p(table, 2, 1, 2) + " " + block);
+        cmd("/fill " + p(table, -1, 0, -2) + " " + p(table, 1, 1, -2) + " " + block);
+        cmd("/fill " + p(table, -1, 0, 2) + " " + p(table, 1, 1, 2) + " " + block);
+    }
+
+    /** The table as the user has it: bookshelves all round (Eterna 15 with Apotheosis). */
+    static void fullRing() {
+        ring("bookshelf");
+    }
+
+    /** Exactly {@code shelves} bookshelves round the table: what a lower-power plan asks for. */
+    static void partialRing(int shelves) {
+        ring("air");
+        java.util.List<int[]> ring = ringPositions();
+        for (int i = 0; i < shelves && i < ring.size(); i++) {
+            int[] at = ring.get(i);
+            cmd("/setblock " + p(table, at[0], at[1], at[2]) + " bookshelf");
+        }
+    }
+
+    /** Shelves the plan's table needs, or -1 to use the table as it stands. */
+    static int shelvesFor(EnchantCalculator.Result plan) {
+        TableSetup now = CrackerState.get().getTableSetup();
+        if (plan.setup == null || now != null && plan.setup.describe().equals(now.describe())) {
+            return -1;
+        }
+        if (plan.setup instanceof com.enchantmentcracker.game.Apotheosis.Table) {
+            return Math.round(((com.enchantmentcracker.game.Apotheosis.Table) plan.setup).stats().eterna);
+        }
+        return plan.bookshelves;
+    }
+
+    /**
+     * Clicks the table's enchant button {@code slot} the way the mouse does: Forge's click event
+     * first (where the cracker's guard can hold it back), then the screen. True if it went through.
+     */
+    static boolean clickEnchant(int slot) {
+        net.minecraft.client.gui.screen.inventory.ContainerScreen<?> screen =
+                (net.minecraft.client.gui.screen.inventory.ContainerScreen<?>) mc().field_71462_r;
+        double x = screen.getGuiLeft() + 60 + 50;
+        double y = screen.getGuiTop() + 14 + 19 * slot + 9;
+        if (net.minecraftforge.client.ForgeHooksClient.onGuiMouseClickedPre(screen, x, y, 0)) {
+            return false; // held back
+        }
+        screen.func_231044_a_(x, y, 0); // mouseClicked
+        return true;
+    }
+
+    /** One cheap book enchantment, so a locked seed re-syncs over RNG steps it could not see. */
+    static void resyncByEnchant() {
+        step(10, () -> {
+            EnchantmentContainer c = tableContainer();
+            if (c != null && !c.func_75139_a(0).func_75211_c().func_190926_b()) {
+                click(0, ClickType.QUICK_MOVE);
+            }
+            ensureLapis();
+        });
+        step(25, () -> place("book", 0));
+        step(25, () -> Mc.enchant(tableContainer().field_75152_c, 0));
+        step(30, () -> {
+            click(0, ClickType.QUICK_MOVE);
+            check(CrackerState.get().isLocked(), "re-synced after the test's own commands ("
+                    + CrackerState.get().getStatusMessage() + ")");
+        });
+        step(10, () -> cmd("/clear " + NAME + " enchanted_book"));
+    }
+
+    /** Puts a book in the table and takes it out again, so the table's current stats are read. */
+    static void refreshTable() {
+        step(10, () -> {
+            EnchantmentContainer c = tableContainer();
+            if (c != null && !c.func_75139_a(0).func_75211_c().func_190926_b()) {
+                click(0, ClickType.QUICK_MOVE);
+            }
+        });
+        step(25, () -> place("book", 0));
+        step(10, () -> {
+            log("    table now reads " + describe(CrackerState.get().getTableSetup()));
+            click(0, ClickType.QUICK_MOVE);
+        });
+    }
+
+    static void ensureLocked() {
+        step(10, () -> {
+            if (!CrackerState.get().isLocked()) {
+                com.enchantmentcracker.game.AutoLocker.toggle();
+            }
+        });
+        stepUntil(() -> !com.enchantmentcracker.game.AutoLocker.isRunning() || ++waitTicks > 1200, () -> {
+            waitTicks = 0;
+            check(CrackerState.get().isLocked(), "seed locked (" + CrackerState.get().getStatusMessage() + ")");
+        });
+    }
+
+    /**
+     * One plan exactly as the user makes it: the Plan button's planner for the item in hand and
+     * the wishes, the Drop button's auto drop (items bouncing back and being picked up), a book
+     * as the dummy in slot 1, then the item in the slot the plan names. Every step is checked
+     * against the server: its XP seed, the table's numbers, and the enchantments delivered.
+     */
+    static void userPlan(String item, EnchantmentInstance... wishes) {
+        userPlan(false, item, wishes);
+    }
+
+    /**
+     * @param hiddenStep a /give right after planning: two RNG steps the cracker cannot see (the
+     *                   pickup sound's pitch), so the plan must be caught off course and held back
+     */
+    static void userPlan(boolean hiddenStep, String item, EnchantmentInstance... wishes) {
+        step(10, () -> {
+            plan = null;
+            cmd("/clear " + NAME + " enchanted_book");
+            ensureLapis();
+        });
+        refreshTable();
+        step(20, () -> {
+            CrackerState state = CrackerState.get();
+            EnchantCalculator.Request request = new EnchantCalculator.Request();
+            String why = com.enchantmentcracker.client.Planner.prepare(request, item, Arrays.asList(wishes),
+                    Collections.emptyList(), 3);
+            if (why != null) {
+                check(false, "planner ready for " + item + " (" + why + ")");
+                return;
+            }
+            request.maxThrows = 1000;
+            List<EnchantCalculator.Result> results = EnchantCalculator.calculateOptions(request);
+            if (results.isEmpty()) {
+                plansSkipped++;
+                log("  " + item + " " + Arrays.toString(wishes) + ": no plan within 1500 drops, skipped");
+                return;
+            }
+            plan = results.get(0);
+            state.setPlanOptions(results);
+            plansMade++;
+            planShelves = shelvesFor(plan);
+            log("  plan " + plansMade + ": " + item + " " + Arrays.toString(wishes) + " -> drop " + plan.itemsToThrow
+                    + ", dummy " + plan.needsDummy() + ", slot " + (plan.slot + 1) + ", table " + plan.setup.describe()
+                    + (planShelves >= 0 ? " (rebuilt with " + planShelves + " shelves)" : " (as it stands)")
+                    + ", gives " + plan.enchantments);
+            if (planShelves >= 0) {
+                partialRing(planShelves);
+            }
+            if (hiddenStep) {
+                cmd("/give " + NAME + " stick 1");
+                log("    (a /give now: two RNG steps the cracker cannot see)");
+            }
+        });
+        step(20, () -> {
+        });
+        step(20, () -> {
+            if (plan == null || !plan.needsDummy() || plan.itemsToThrow <= 0) {
+                return;
+            }
+            cobbleBefore = count("cobblestone");
+            AutoDropper.setJunkItem("cobblestone");
+            com.enchantmentcracker.client.ClientEvents.startPlanDrops(); // the Drop button
+            check(AutoDropper.isRunning(), "auto drop started for " + plan.itemsToThrow);
+        });
+        stepUntil(() -> plan == null || !AutoDropper.isRunning() || ++waitTicks > 6000, () -> {
+            waitTicks = 0;
+            if (plan == null || !plan.needsDummy()) {
+                return;
+            }
+            check(!AutoDropper.isRunning(), "auto drop finished");
+        });
+        step(70, () -> {
+        }); // let thrown items bounce back and be picked up
+        step(5, () -> {
+            if (plan == null) {
+                return;
+            }
+            CrackerState state = CrackerState.get();
+            if (plan.needsDummy() && plan.itemsToThrow > 0) {
+                int pickedUp = count("cobblestone") - (cobbleBefore - plan.itemsToThrow);
+                pickedUpTotal += Math.max(0, pickedUp);
+                log("    dropped " + state.getDropsSincePlan() + " (server-confirmed), " + pickedUp + " picked back up");
+            }
+            check(state.getDropsSincePlan() == Math.max(0, plan.itemsToThrow), "drops counted " + state.getDropsSincePlan()
+                    + " == planned " + plan.itemsToThrow);
+            check(state.getPlanStage() == (plan.needsDummy() ? CrackerState.PlanStage.DUMMY : CrackerState.PlanStage.FINAL),
+                    "stage before the enchanting: " + state.getPlanStage());
+        });
+        // The dummy: a book in slot 1.
+        step(12, () -> {
+            if (plan != null && plan.needsDummy()) {
+                EnchantmentContainer c = tableContainer();
+                if (c != null && !c.func_75139_a(0).func_75211_c().func_190926_b()) {
+                    click(0, ClickType.QUICK_MOVE);
+                }
+            }
+        });
+        step(12, () -> {
+            if (plan != null && plan.needsDummy()) {
+                place("book", 0);
+            }
+        });
+        step(25, () -> {
+            if (plan != null && plan.needsDummy()) {
+                check(clickEnchant(0), "the dummy click goes through");
+            }
+        });
+        step(20, () -> {
+            if (plan != null) {
+                askTruth();
+            }
+        });
+        stepUntil(() -> plan == null || truthStamp != stampBefore || ++waitTicks > 100, () -> {
+            waitTicks = 0;
+            if (plan == null) {
+                return;
+            }
+            CrackerState state = CrackerState.get();
+            Integer known = state.getEffectiveXpSeed();
+            if (!hiddenStep) {
+                check(known != null && known == truthXp, "cracker's XP seed " + (known == null ? "unknown" : PlayerSeed.formatXpSeed(known))
+                        + " == server's " + PlayerSeed.formatXpSeed(truthXp));
+            } else {
+                // Off course: the lock cannot name this seed, so it stays unconfirmed until the item goes in.
+                check(known == null && state.getPlanStage() == CrackerState.PlanStage.CHECKING,
+                        "not confirmed after the dummy: " + state.getPlanStage());
+            }
+            if (!hiddenStep) {
+                check(truthXp == plan.xpSeed, "server is on the planned XP seed " + PlayerSeed.formatXpSeed(plan.xpSeed));
+            } else {
+                check(truthXp != plan.xpSeed, "the hidden steps moved the server off the planned seed");
+            }
+            EnchantmentContainer c = tableContainer();
+            if (plan.needsDummy() && c != null && !c.func_75139_a(0).func_75211_c().func_190926_b()) {
+                click(0, ClickType.QUICK_MOVE); // the enchanted book out
+            }
+        });
+        step(30, () -> {
+            if (plan != null) {
+                place(item, 0);
+            }
+        });
+        step(30, () -> {
+            if (plan == null) {
+                return;
+            }
+            CrackerState state = CrackerState.get();
+            EnchantmentContainer c = tableContainer();
+            if (hiddenStep) {
+                check(state.getPlanStage() == CrackerState.PlanStage.OFF_COURSE, "caught off course: " + state.getPlanStage());
+                check(!clickEnchant(plan.slot), "the real enchantment is held back");
+                return;
+            }
+            check(state.getPlanStage() == CrackerState.PlanStage.FINAL, "stage FINAL: " + state.getPlanStage());
+            String warning = com.enchantmentcracker.client.gui.tabs.PlanTab.wrongItemWarning(state, plan);
+            check(warning == null, "no final-step warning (" + warning + ")");
+            int[] expected = plan.setup.levels(plan.xpSeed, item);
+            check(Arrays.equals(expected, c.field_75167_g), "table shows the planned levels " + Arrays.toString(expected)
+                    + ": " + Arrays.toString(c.field_75167_g));
+            check(clickEnchant(plan.slot), "the real enchantment click goes through");
+        });
+        stepUntil(() -> {
+            EnchantmentContainer c = tableContainer();
+            return plan == null || hiddenStep || c == null || !enchantsOf(c.func_75139_a(0).func_75211_c()).isEmpty()
+                    || ++waitTicks > 100;
+        }, () -> {
+            waitTicks = 0;
+            if (plan == null) {
+                return;
+            }
+            if (hiddenStep) {
+                EnchantmentContainer c = tableContainer();
+                check(enchantsOf(c.func_75139_a(0).func_75211_c()).isEmpty(), "the " + item + " was not enchanted");
+                click(0, ClickType.QUICK_MOVE);
+                CrackerState.get().confirmPlan();
+                return;
+            }
+            EnchantmentContainer c = tableContainer();
+            Set<String> got = enchantsOf(c.func_75139_a(0).func_75211_c());
+            Set<String> want = asSet(plan.enchantments);
+            boolean same = got.equals(want);
+            check(same, "1:1 " + item + ": planned " + want + ", got " + got);
+            for (EnchantmentInstance wish : wishes) {
+                boolean has = false;
+                for (EnchantmentInstance e : plan.enchantments) {
+                    has |= e.enchantment.equals(wish.enchantment) && e.level >= wish.level;
+                }
+                check(has, "plan has the wish " + wish.enchantment + " " + wish.level);
+            }
+            plansDelivered += same ? 1 : 0;
+            click(0, ClickType.QUICK_MOVE);
+        });
+        step(5, () -> {
+            if (plan != null && !hiddenStep) {
+                check(CrackerState.get().getPlanStage() == CrackerState.PlanStage.DONE, "plan DONE");
+            }
+        });
+        step(10, () -> {
+            if (plan == null || hiddenStep) {
+                return;
+            }
+            if (!"book".equals(item)) { // a book plan's result is an enchanted book; plain books are the dummies
+                cmd("/clear " + NAME + " " + item);
+            }
+            CrackerState.get().confirmPlan();
+            if (planShelves >= 0) {
+                fullRing();
+            }
+        });
+    }
+
+    /**
+     * The thrown-item lock: forget the seed, enchant once (one XP seed captured), throw one item
+     * with the drop key, and the item's launch velocity must lock the seed without a second
+     * enchantment. The next round then checks the lock against the server.
+     */
+    static void velocityLock() {
+        step(10, () -> {
+            cmd("/give " + NAME + " diamond_sword 1");
+            cmd("/give " + NAME + " diamond_pickaxe 1");
+            cmd("/give " + NAME + " book 8");
+            cmd("/give " + NAME + " lapis_lazuli 64");
+        });
+        step(20, () -> {
+            // As after a relog: a new generator, and the table's XP seed left over from the old one.
+            CrackerState.get().onNewPlayerEntity("Test relog");
+            check(!com.enchantmentcracker.client.ModSettings.velocityCrack, "thrown-item lock is off in this release");
+        });
+        round("diamond_sword", 0); // the enchantment whose XP seed the throw completes
+        // As the status line asks: an item in the table, so the new XP seed can be worked out.
+        step(30, () -> place("book", 0));
+        step(10, () -> {
+            log("  after one look at the table: " + CrackerState.get().getStatusMessage());
+            click(0, ClickType.QUICK_MOVE);
+        });
+        step(20, () -> Mc.player().func_71053_j()); // closeScreen
+        step(15, () -> {
+            for (Slot slot : Mc.player().field_71069_bz.field_75151_b) {
+                if (slot.func_75216_d() && "cobblestone".equals(Mc.idOf(slot.func_75211_c().func_77973_b()))) {
+                    Mc.windowClick(0, slot.field_75222_d, Mc.player().field_71071_by.field_70461_c, ClickType.SWAP);
+                    break;
+                }
+            }
+            log("  before the throw: " + CrackerState.get().getStatus() + ", " + CrackerState.get().getStatusMessage());
+        });
+        step(30, NetTest::pressQ);
+        step(10, () -> check(!CrackerState.get().isLocked(), "a throw does not lock anything with the lock off ("
+                + CrackerState.get().getStatusMessage() + ")"));
+        reopen();
+        round("diamond_pickaxe", 1); // the second enchantment, with the throw counted in between
+        round("book", 2); // one look at the table works its XP seed out, and the pair locks
+        step(5, () -> check(CrackerState.get().isLocked() && CrackerState.get().getSource() == CrackerState.Source.TWO_SEEDS,
+                "locked from two XP seeds across the throw (" + CrackerState.get().getStatusMessage() + ")"));
+    }
+
+    static void userFlows() {
+        step(15, () -> Mc.player().func_71053_j()); // closeScreen
+        step(20, () -> {
+            fullRing();
+            cmd("/clear " + NAME);
+            cmd("/give " + NAME + " lapis_lazuli 256");
+            cmd("/give " + NAME + " book 64");
+            cmd("/give " + NAME + " cobblestone 1100");
+            // Facing the table from just outside the shelves: thrown items hit them, drop at our
+            // feet and are picked back up while the drops go on, as the user saw.
+            cmd("/tp " + NAME + " " + (table.func_177958_n() + 0.5) + " " + table.func_177956_o() + " "
+                    + (table.func_177952_p() + 3.5) + " facing " + p(table, 0, 1, 0));
+        });
+        step(40, () -> {
+        });
+        reopen();
+        refreshTable();
+        step(10, () -> check(CrackerState.get().getTableSetup() != null
+                        && CrackerState.get().getTableSetup().describe().contains(APOTH ? "E15.0" : "15 bookshelves"),
+                "the user's table is read: " + describe(CrackerState.get().getTableSetup())));
+        ensureLocked();
+        resyncByEnchant(); // over the gives above, if the seed was locked before them
+        String[][] wishes = {
+                {"diamond_boots", "protection 4", "unbreaking 3", "feather_falling 4"},
+                {"diamond_leggings", "protection 4", "unbreaking 3"},
+                {"diamond_chestplate", "protection 4", "unbreaking 3"},
+                {"diamond_helmet", "protection 4", "unbreaking 3"},
+                {"diamond_sword", "sharpness 4", "looting 3"},
+                {"diamond_pickaxe", "efficiency 4", "unbreaking 3"},
+                {"bow", "power 4"},
+                {"book", "protection 4"},
+        };
+        for (int round = 0; round < 2; round++) {
+            // This round's items in one go (each /give is two RNG steps the cracker cannot see),
+            // then one enchantment to re-sync over them, the way a player's dummy would.
+            step(10, () -> {
+                for (String[] w : wishes) {
+                    cmd("/give " + NAME + " " + w[0] + " 1");
+                }
+                cmd("/give " + NAME + " diamond_boots 1");
+            });
+            step(20, () -> {
+            });
+            resyncByEnchant();
+            if (round == 0) {
+                // The worst case: something unseen uses the RNG after planning. Held back, not wasted.
+                userPlan(true, "diamond_boots", new EnchantmentInstance("protection", 4),
+                        new EnchantmentInstance("unbreaking", 3), new EnchantmentInstance("feather_falling", 4));
+            } else {
+                step(5, () -> cmd("/clear " + NAME + " diamond_boots 1"));
+            }
+            for (String[] w : wishes) {
+                EnchantmentInstance[] list = new EnchantmentInstance[w.length - 1];
+                for (int i = 1; i < w.length; i++) {
+                    String[] parts = w[i].split(" ");
+                    list[i - 1] = new EnchantmentInstance(parts[0], Integer.parseInt(parts[1]));
+                }
+                userPlan(w[0], list);
+            }
+        }
+    }
+
     static void build() {
         MinecraftForge.EVENT_BUS.addListener(NetTest::onChat);
         stepUntil(() -> {
@@ -337,6 +793,7 @@ final class NetTest {
         });
         reopen();
 
+        if (!QUICK) {
         // Phase 1: 15 bookshelves. Two enchantments lock the seed from two XP seeds.
         // A new player's XP seed is 0, which the RNG never drew, so it takes one enchantment more
         // than usual: 0 -> A is not a pair, A -> B is. Items are dropped between the two
@@ -519,8 +976,14 @@ final class NetTest {
         step(5, () -> check(CrackerState.get().isLocked(), "still locked at the end ("
                 + CrackerState.get().getSource() + ", drift " + CrackerState.get().getDriftSteps() + ")"));
 
+        }
+        userFlows();
+        velocityLock();
+
         step(5, () -> {
             log("");
+            log("user plans: " + plansMade + " made, " + plansDelivered + " delivered exactly as planned, " + plansSkipped
+                    + " skipped (no plan within the drop limit); items picked back up while dropping: " + pickedUpTotal);
             log("rounds " + rounds + ": full XP seed worked out exactly in " + exactRounds + ", not yet pinned down in "
                     + unresolvedRounds + " (a consensus offer checked in " + consensusRounds + ")");
             log("passed " + passes + ", failed " + fails);

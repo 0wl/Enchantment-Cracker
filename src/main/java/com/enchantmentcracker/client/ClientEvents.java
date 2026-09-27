@@ -25,7 +25,6 @@ import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.container.EnchantmentContainer;
 import net.minecraft.inventory.container.Slot;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiContainerEvent;
@@ -40,7 +39,6 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.lwjgl.glfw.GLFW;
 
-import java.lang.reflect.Field;
 
 /**
  * Wires the mod into the game: keeps the seed up to date, handles the key binds, decorates
@@ -54,8 +52,6 @@ public final class ClientEvents {
     private static boolean newEntityPending;
     private static String newEntityReason;
 
-    private static Field pressTimeField;
-    private static boolean pressTimeBroken;
 
     /** The plan stage last announced in chat, so each step is announced once. */
     private static CrackerState.PlanStage announcedStage = CrackerState.PlanStage.NONE;
@@ -91,7 +87,6 @@ public final class ClientEvents {
             return;
         }
         if (event.phase == TickEvent.Phase.START) {
-            countDropKeyPresses();
             readThrownVelocities();
             return;
         }
@@ -118,25 +113,33 @@ public final class ClientEvents {
         }
     }
 
+    /** The final-step warning last said in chat, the one being timed, and for how long. */
+    private static String warnedWarning;
+    private static String pendingWarning;
+    private static int warningTicks;
+
     /**
      * Says in chat when a plan step completes, so the window does not have to be open to
      * follow along: drops counted, dummy enchanted (and whether the table landed on the
      * planned seed), final enchantment done.
      */
-    /** The table item last warned about as not the plan's; null when there is nothing to warn about. */
-    private static String warnedWrongItem;
-
     private static void announcePlanProgress() {
         CrackerState state = CrackerState.get();
         EnchantCalculator.Result plan = state.getPlan();
         CrackerState.PlanStage stage = state.getPlanStage();
-        // The wrong item in the table for the real enchantment: say so once per item.
+        // The table not as the plan needs it for the real enchantment (wrong item, other setup):
+        // say so once, when it has held for half a second (a freshly placed item's numbers lag).
         String wrong = com.enchantmentcracker.client.gui.tabs.PlanTab.wrongItemWarning(state, plan);
-        String wrongKey = wrong == null ? null : state.getTableItem();
-        if (wrongKey != null && !wrongKey.equals(warnedWrongItem)) {
+        if (wrong == null || !wrong.equals(pendingWarning)) {
+            pendingWarning = wrong;
+            warningTicks = 0;
+        } else if (++warningTicks == 10 && !wrong.equals(warnedWarning)) {
             Mc.chat("\u00a7c[Cracker] \u00a7f" + wrong);
+            warnedWarning = wrong;
         }
-        warnedWrongItem = wrongKey;
+        if (wrong == null) {
+            warnedWarning = null;
+        }
         if (plan != announcedPlan) {
             // A new plan: remember where it starts, announce nothing yet.
             announcedPlan = plan;
@@ -156,49 +159,12 @@ public final class ClientEvents {
     }
 
     /**
-     * As a LAN guest or on a server the drop event only happens on the server, so the one
-     * kind of drop the client never hears about is pressing Q with no screen open. Read the
-     * drop key's pending presses just before the game processes them, and count what they
-     * will throw: one item per press, or the whole stack once with Ctrl.
-     */
-    private static void countDropKeyPresses() {
-        if (Mc.integratedServer() != null || Mc.currentScreen() != null || Mc.isSpectator() || pressTimeBroken) {
-            return;
-        }
-        KeyBinding drop = Mc.settings().field_74316_C; // gameSettings.keyBindDrop
-        int presses;
-        try {
-            if (pressTimeField == null) {
-                pressTimeField = KeyBinding.class.getDeclaredField("field_151474_i"); // pressTime
-                pressTimeField.setAccessible(true);
-            }
-            presses = pressTimeField.getInt(drop);
-        } catch (Throwable t) {
-            pressTimeBroken = true;
-            EnchantmentCrackerMod.LOGGER.warn("Cannot watch the drop key; server-side drops will not be counted", t);
-            return;
-        }
-        if (presses <= 0) {
-            return;
-        }
-        ItemStack held = Mc.heldStack();
-        if (held.func_190926_b()) {
-            return;
-        }
-        int drops = Screen.func_231172_r_() ? 1 : Math.min(presses, held.func_190916_E()); // hasControlDown, getCount
-        for (int i = 0; i < drops; i++) {
-            CrackerState.get().onItemDropped();
-        }
-    }
-
-    /**
      * Every dropped stack spends four {@code nextFloat()} calls on the player's RNG.
      *
      * <p>In your own world (singleplayer or hosting LAN) the authoritative event fires on the
-     * integrated server, in this same process, and that is the one counted. Elsewhere the
-     * server's event never reaches us, but inventory drops (Q over a slot, dragging out of
-     * the window, and the auto-dropper) are simulated on the client first and fire the same
-     * event there, so those are counted instead.
+     * integrated server, in this same process, and that is the one counted. Elsewhere drops are
+     * counted from the items the server spawns ({@link #onEntityJoin}), never from the client's
+     * own simulation of a click: the server can ignore a click the client already simulated.
      */
     @SubscribeEvent
     public static void onItemToss(ItemTossEvent event) {
@@ -209,11 +175,7 @@ public final class ClientEvents {
         }
         boolean clientSide = thrower.field_70170_p.field_72995_K; // world.isRemote
         boolean ownWorld = Mc.integratedServer() != null;
-        if (ownWorld) {
-            if (clientSide || !thrower.func_110124_au().equals(me.func_110124_au())) { // getUniqueID
-                return;
-            }
-        } else if (!clientSide || thrower != me) {
+        if (!ownWorld || clientSide || !thrower.func_110124_au().equals(me.func_110124_au())) { // getUniqueID
             return;
         }
         CrackerState.get().onItemDropped();
@@ -227,17 +189,25 @@ public final class ClientEvents {
      */
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinWorldEvent event) {
-        if (!ModSettings.velocityCrack || Mc.integratedServer() != null) {
-            return; // in your own world the seed is already exact
+        if (Mc.integratedServer() != null) {
+            return; // in your own world drops are counted on the server thread, and the seed is exact
         }
         if (!(event.getEntity() instanceof ItemEntity) || !event.getWorld().field_72995_K) { // isRemote
             return;
         }
         PlayerEntity me = Mc.player();
-        if (me == null || CrackerState.get().getStatus() != CrackerState.Status.AWAITING_SECOND) {
+        if (me == null) {
             return;
         }
         ItemEntity item = (ItemEntity) event.getEntity();
+        if (isOwnDrop(item, me)) {
+            // The server made this item, so it made the drop: count it, whatever caused it (auto
+            // drop, Q, closing a window with a stack on the cursor, /give with a full inventory).
+            CrackerState.get().onItemDropped();
+        }
+        if (!ModSettings.velocityCrack || CrackerState.get().getStatus() != CrackerState.Status.AWAITING_SECOND) {
+            return;
+        }
         double dx = item.func_226277_ct_() - me.func_226277_ct_();
         double dy = item.func_226278_cu_() - me.func_226278_cu_();
         double dz = item.func_226281_cx_() - me.func_226281_cx_();
@@ -252,6 +222,19 @@ public final class ClientEvents {
                 pendingThrows.add(new PendingThrow(item, me.field_70177_z, me.field_70125_A)); // yaw, pitch
             }
         }
+    }
+
+    /**
+     * An item the server just spawned for a drop of ours: {@code PlayerEntity#dropItem} creates it
+     * at exactly (x, eye height - 0.3, z) of the thrower, and the spawn packet carries that
+     * position. The slack covers the server's view of us lagging our own while moving (and
+     * sneaking, which lowers the eyes by 0.35).
+     */
+    static boolean isOwnDrop(ItemEntity item, PlayerEntity me) {
+        double dx = item.func_226277_ct_() - me.func_226277_ct_();   // getPosX
+        double dz = item.func_226281_cx_() - me.func_226281_cx_();   // getPosZ
+        double dy = item.func_226278_cu_() - (me.func_226280_cw_() - 0.3); // getPosY, getPosYEye
+        return dx * dx + dz * dz <= 0.7 * 0.7 && Math.abs(dy) <= 0.4;
     }
 
     /** Reads a thrown item's launch velocity and tries to lock the seed from it. */
@@ -353,22 +336,9 @@ public final class ClientEvents {
         }
     }
 
-    /** A stack sat on the cursor in the last frame of a container screen, on a server. */
-    private static boolean cursorHeld;
-
     @SubscribeEvent
     public static void onGuiOpen(GuiOpenEvent event) {
         Screen next = event.getGui();
-        // Closing a container the normal way (Esc, E) with a stack on the cursor makes the server
-        // throw that stack: four RNG steps. The client just empties its cursor
-        // (ClientPlayerEntity.closeScreenAndDropStack) and fires no toss event, so count it here.
-        // Any other way out still holds the stack now, and drops it through the client's own
-        // Container#onContainerClosed, whose toss event is counted as usual.
-        if (cursorHeld && next == null && Mc.currentScreen() instanceof ContainerScreen
-                && Mc.player() != null && Mc.cursorStack().func_190926_b()) { // isEmpty
-            CrackerState.get().onItemDropped();
-        }
-        cursorHeld = false;
         if (next instanceof DeathScreen) {
             newEntityPending = true;
             newEntityReason = "You respawned";
@@ -496,6 +466,38 @@ public final class ClientEvents {
         AutoDropper.start(remaining);
     }
 
+    /**
+     * Holds back a click on one of the table's three enchant buttons that would spoil the active
+     * plan (see {@code PlanTab.enchantBlockReason}); Shift-click enchants anyway. Vanilla's and
+     * Apotheosis's table screens place the buttons alike: x 60..168, y 14 + 19 * slot, 19 high.
+     */
+    @SubscribeEvent
+    public static void guardEnchantClick(GuiScreenEvent.MouseClickedEvent.Pre event) {
+        Screen screen = event.getGui();
+        if (event.getButton() != 0 || TableWatcher.enchantingContainerOf(screen) == null
+                || Screen.func_231173_s_()) { // hasShiftDown
+            return;
+        }
+        ContainerScreen<?> table = (ContainerScreen<?>) screen;
+        double dx = event.getMouseX() - (table.getGuiLeft() + 60);
+        int slot = -1;
+        for (int k = 0; k < 3; k++) {
+            double dy = event.getMouseY() - (table.getGuiTop() + 14 + 19 * k);
+            if (dx >= 0 && dy >= 0 && dx < 108 && dy < 19) {
+                slot = k;
+            }
+        }
+        if (slot < 0) {
+            return;
+        }
+        CrackerState state = CrackerState.get();
+        String why = com.enchantmentcracker.client.gui.tabs.PlanTab.enchantBlockReason(state, state.getPlan(), slot);
+        if (why != null) {
+            event.setCanceled(true);
+            Mc.chat("§c[Cracker] Held back: §f" + why + " §7(Shift-click to enchant anyway.)");
+        }
+    }
+
     @SubscribeEvent
     public static void onMouseClicked(GuiScreenEvent.MouseClickedEvent.Pre event) {
         if (!AutoDropper.isPickArmed() || !(event.getGui() instanceof ContainerScreen)) {
@@ -565,8 +567,6 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void onScreenDraw(GuiScreenEvent.DrawScreenEvent.Post event) {
         Screen screen = event.getGui();
-        cursorHeld = screen instanceof ContainerScreen && Mc.integratedServer() == null && Mc.player() != null
-                && !Mc.isCreative() && !Mc.cursorStack().func_190926_b();
         if (AutoDropper.isPickArmed() && screen instanceof ContainerScreen) {
             ContainerScreen<?> container = (ContainerScreen<?>) screen;
             String hint = "Click the item to use as junk (right-click to cancel)";

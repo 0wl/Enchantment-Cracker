@@ -85,7 +85,11 @@ public final class SelfTest {
     public SelfTest() {
         MinecraftForge.EVENT_BUS.addListener(SelfTest::onTick);
         MinecraftForge.EVENT_BUS.addListener(SelfTest::onRender);
-        if (NET) {
+        if (MODE.equals("lanhost")) {
+            LanHost.build();
+        } else if (MODE.equals("pack")) {
+            PackTest.build();
+        } else if (NET) {
             NetTest.build();
         } else {
             build();

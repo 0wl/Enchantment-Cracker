@@ -1,0 +1,351 @@
+launching LAN host apoth with C:\Users\mexic\Desktop\Enchantment Cracker Mod\output\enchcracker-1.2.7-forge-1.16.5.jar
+host open to LAN after 41s; launching guest
+guest exit 0
+Enchantment Cracker network test, Apotheosis, server port 25601
+joined the server
+PASS playing on a real server, not our own world
+built a table with bookshelves at BlockPos{x=-224, y=62, z=-146}
+PASS table opened
+PASS table opened
+    table now reads Apotheosis E15.0 Q15% A0%+
+PASS the user's table is read: Apotheosis E15.0 Q15% A0%+
+PASS seed locked (Player seed locked from two XP seeds.)
+PASS re-synced after the test's own commands (In sync.)
+PASS re-synced after the test's own commands (On a server the table only shares half the XP seed (????4C24). Put an enchantable item in the table to work out the rest.)
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 1: diamond_boots [protection IV, unbreaking III, feather_falling IV] -> drop 292, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [projectile_protection V, protection IV, unbreaking III, feather_falling IV, depth_strider III]
+    (a /give now: two RNG steps the cracker cannot see)
+PASS auto drop started for 292
+PASS auto drop finished
+    dropped 292 (server-confirmed), 292 picked back up
+PASS drops counted 292 == planned 292
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS not confirmed after the dummy: CHECKING
+PASS the hidden steps moved the server off the planned seed
+PASS caught off course: OFF_COURSE
+PASS the real enchantment is held back
+PASS the diamond_boots was not enchanted
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 2: diamond_boots [protection IV, unbreaking III, feather_falling IV] -> drop 65, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [unbreaking III, protection IV, feather_falling IV]
+PASS auto drop started for 65
+PASS auto drop finished
+    dropped 65 (server-confirmed), 65 picked back up
+PASS drops counted 65 == planned 65
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 43C527AB == server's 43C527AB
+PASS server is on the planned XP seed 43C527AB
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 20, 30]: [12, 20, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_boots: planned [feather_falling:4, unbreaking:3, protection:4], got [feather_falling:4, unbreaking:3, protection:4]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan has the wish feather_falling 4
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 3: diamond_leggings [protection IV, unbreaking III] -> drop 1, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [unbreaking III, fire_protection IV, protection IV]
+PASS auto drop started for 1
+PASS auto drop finished
+    dropped 1 (server-confirmed), 1 picked back up
+PASS drops counted 1 == planned 1
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed D6F6691A == server's D6F6691A
+PASS server is on the planned XP seed D6F6691A
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 20, 30]: [12, 20, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_leggings: planned [fire_protection:4, unbreaking:3, protection:4], got [fire_protection:4, unbreaking:3, protection:4]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 4: diamond_chestplate [protection IV, unbreaking III] -> drop 14, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [projectile_protection V, protection IV, unbreaking III]
+PASS auto drop started for 14
+PASS auto drop finished
+    dropped 14 (server-confirmed), 14 picked back up
+PASS drops counted 14 == planned 14
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 9F7E6527 == server's 9F7E6527
+PASS server is on the planned XP seed 9F7E6527
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [11, 23, 30]: [11, 23, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_chestplate: planned [protection:4, unbreaking:3, projectile_protection:5], got [protection:4, unbreaking:3, projectile_protection:5]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 5: diamond_helmet [protection IV, unbreaking III] -> drop 19, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [fire_protection IV, unbreaking III, protection IV]
+PASS auto drop started for 19
+PASS auto drop finished
+    dropped 19 (server-confirmed), 19 picked back up
+PASS drops counted 19 == planned 19
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed DEB4C723 == server's DEB4C723
+PASS server is on the planned XP seed DEB4C723
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 24, 30]: [12, 24, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_helmet: planned [fire_protection:4, unbreaking:3, protection:4], got [fire_protection:4, unbreaking:3, protection:4]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 6: diamond_sword [sharpness IV, looting III] -> drop 27, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [sharpness IV, looting III, knockback II]
+PASS auto drop started for 27
+PASS auto drop finished
+    dropped 27 (server-confirmed), 27 picked back up
+PASS drops counted 27 == planned 27
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 12E0D284 == server's 12E0D284
+PASS server is on the planned XP seed 12E0D284
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 19, 30]: [12, 19, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_sword: planned [sharpness:4, looting:3, knockback:2], got [sharpness:4, looting:3, knockback:2]
+PASS plan has the wish sharpness 4
+PASS plan has the wish looting 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 7: diamond_pickaxe [efficiency IV, unbreaking III] -> drop 4, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [unbreaking III, efficiency IV]
+PASS auto drop started for 4
+PASS auto drop finished
+    dropped 4 (server-confirmed), 4 picked back up
+PASS drops counted 4 == planned 4
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 7CA52856 == server's 7CA52856
+PASS server is on the planned XP seed 7CA52856
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [10, 23, 30]: [10, 23, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_pickaxe: planned [efficiency:4, unbreaking:3], got [efficiency:4, unbreaking:3]
+PASS plan has the wish efficiency 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 8: bow [power IV] -> drop 2, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [flame, infinity, power IV]
+PASS auto drop started for 2
+PASS auto drop finished
+    dropped 2 (server-confirmed), 2 picked back up
+PASS drops counted 2 == planned 2
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed ABCB3F12 == server's ABCB3F12
+PASS server is on the planned XP seed ABCB3F12
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [11, 22, 30]: [11, 22, 30]
+PASS the real enchantment click goes through
+PASS 1:1 bow: planned [flame:1, infinity:1, power:4], got [flame:1, infinity:1, power:4]
+PASS plan has the wish power 4
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 9: book [protection IV] -> drop 26, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [protection IV, aqua_affinity, unbreaking III]
+PASS auto drop started for 26
+PASS auto drop finished
+    dropped 26 (server-confirmed), 26 picked back up
+PASS drops counted 26 == planned 26
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed CB761923 == server's CB761923
+PASS server is on the planned XP seed CB761923
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 22, 30]: [12, 22, 30]
+PASS the real enchantment click goes through
+PASS 1:1 book: planned [protection:4, unbreaking:3, aqua_affinity:1], got [protection:4, unbreaking:3, aqua_affinity:1]
+PASS plan has the wish protection 4
+PASS plan DONE
+PASS re-synced after the test's own commands (On a server the table only shares half the XP seed (????9B88). Put an enchantable item in the table to work out the rest.)
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 10: diamond_boots [protection IV, unbreaking III, feather_falling IV] -> drop 29, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [fire_protection IV, feather_falling IV, unbreaking III, protection IV]
+PASS auto drop started for 29
+PASS auto drop finished
+    dropped 29 (server-confirmed), 29 picked back up
+PASS drops counted 29 == planned 29
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 81A59D6D == server's 81A59D6D
+PASS server is on the planned XP seed 81A59D6D
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [11, 21, 30]: [11, 21, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_boots: planned [feather_falling:4, fire_protection:4, unbreaking:3, protection:4], got [feather_falling:4, fire_protection:4, unbreaking:3, protection:4]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan has the wish feather_falling 4
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 11: diamond_leggings [protection IV, unbreaking III] -> drop 2, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [projectile_protection V, protection IV, unbreaking III]
+PASS auto drop started for 2
+PASS auto drop finished
+    dropped 2 (server-confirmed), 2 picked back up
+PASS drops counted 2 == planned 2
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 87A998DA == server's 87A998DA
+PASS server is on the planned XP seed 87A998DA
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 22, 30]: [12, 22, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_leggings: planned [protection:4, unbreaking:3, projectile_protection:5], got [protection:4, unbreaking:3, projectile_protection:5]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 12: diamond_chestplate [protection IV, unbreaking III] -> drop 17, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [unbreaking III, protection IV]
+PASS auto drop started for 17
+PASS auto drop finished
+    dropped 17 (server-confirmed), 17 picked back up
+PASS drops counted 17 == planned 17
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 2446CBC8 == server's 2446CBC8
+PASS server is on the planned XP seed 2446CBC8
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 19, 30]: [12, 19, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_chestplate: planned [unbreaking:3, protection:4], got [unbreaking:3, protection:4]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 13: diamond_helmet [protection IV, unbreaking III] -> drop 31, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [protection IV, blast_protection IV, unbreaking III, aqua_affinity]
+PASS auto drop started for 31
+PASS auto drop finished
+    dropped 31 (server-confirmed), 31 picked back up
+PASS drops counted 31 == planned 31
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 887CE995 == server's 887CE995
+PASS server is on the planned XP seed 887CE995
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 22, 30]: [12, 22, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_helmet: planned [protection:4, blast_protection:4, unbreaking:3, aqua_affinity:1], got [protection:4, blast_protection:4, unbreaking:3, aqua_affinity:1]
+PASS plan has the wish protection 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 14: diamond_sword [sharpness IV, looting III] -> drop 17, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [sharpness IV, looting III]
+PASS auto drop started for 17
+PASS auto drop finished
+    dropped 17 (server-confirmed), 17 picked back up
+PASS drops counted 17 == planned 17
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 93C0375B == server's 93C0375B
+PASS server is on the planned XP seed 93C0375B
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 23, 30]: [12, 23, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_sword: planned [sharpness:4, looting:3], got [sharpness:4, looting:3]
+PASS plan has the wish sharpness 4
+PASS plan has the wish looting 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 15: diamond_pickaxe [efficiency IV, unbreaking III] -> drop 1, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [efficiency IV, unbreaking III]
+PASS auto drop started for 1
+PASS auto drop finished
+    dropped 1 (server-confirmed), 1 picked back up
+PASS drops counted 1 == planned 1
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 60CCAA85 == server's 60CCAA85
+PASS server is on the planned XP seed 60CCAA85
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 20, 30]: [12, 20, 30]
+PASS the real enchantment click goes through
+PASS 1:1 diamond_pickaxe: planned [efficiency:4, unbreaking:3], got [efficiency:4, unbreaking:3]
+PASS plan has the wish efficiency 4
+PASS plan has the wish unbreaking 3
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 16: bow [power IV] -> drop 1, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [unbreaking III, power IV]
+PASS auto drop started for 1
+PASS auto drop finished
+    dropped 1 (server-confirmed), 1 picked back up
+PASS drops counted 1 == planned 1
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 45DA79AC == server's 45DA79AC
+PASS server is on the planned XP seed 45DA79AC
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [10, 23, 30]: [10, 23, 30]
+PASS the real enchantment click goes through
+PASS 1:1 bow: planned [unbreaking:3, power:4], got [unbreaking:3, power:4]
+PASS plan has the wish power 4
+PASS plan DONE
+    table now reads Apotheosis E15.0 Q15% A0%+
+  plan 17: book [protection IV] -> drop 79, dummy true, slot 3, table Apotheosis E15.0 Q15% A0%+ (as it stands), gives [protection IV]
+PASS auto drop started for 79
+PASS auto drop finished
+    dropped 79 (server-confirmed), 79 picked back up
+PASS drops counted 79 == planned 79
+PASS stage before the enchanting: DUMMY
+PASS the dummy click goes through
+PASS cracker's XP seed 040BFC48 == server's 040BFC48
+PASS server is on the planned XP seed 040BFC48
+PASS stage FINAL: FINAL
+PASS no final-step warning (null)
+PASS table shows the planned levels [12, 19, 30]: [12, 19, 30]
+PASS the real enchantment click goes through
+PASS 1:1 book: planned [protection:4], got [protection:4]
+PASS plan has the wish protection 4
+PASS plan DONE
+PASS thrown-item lock is off in this release
+round 1: diamond_sword slot 1, table synced FFFF8C87, worked out B4838C87 after 11 ticks, server has B4838C87, levels [11, 20, 30], Apotheosis E15.0 Q15% A0%+, status UNKNOWN/NONE
+PASS server answered the XP seed query
+PASS the table synced only the low 16 bits (FFFF8C87)
+PASS worked out the full XP seed exactly: B4838C87 vs B4838C87
+PASS all three levels predicted: 11/20/30 vs table 11/20/30
+PASS no table problem (null)
+PASS diamond_sword was enchanted
+PASS diamond_sword slot 1 predicted [fire_aspect:1], got [fire_aspect:1]
+  after one look at the table: Captured XP seed B2A4C34D. Enchant again, or throw an item, to lock the seed.
+  before the throw: AWAITING_SECOND, Captured XP seed B2A4C34D. Enchant again, or throw an item, to lock the seed.
+PASS a throw does not lock anything with the lock off (Captured XP seed B2A4C34D. Enchant again, or throw an item, to lock the seed.)
+PASS table opened
+round 2: diamond_pickaxe slot 2, table synced FFFFC34D, worked out B2A4C34D after 0 ticks, server has B2A4C34D, levels [7, 19, 30], Apotheosis E15.0 Q15% A0%+, status AWAITING_SECOND/NONE
+PASS server answered the XP seed query
+PASS the table synced only the low 16 bits (FFFFC34D)
+PASS worked out the full XP seed exactly: B2A4C34D vs B2A4C34D
+PASS all three levels predicted: 7/19/30 vs table 7/19/30
+PASS no table problem (null)
+PASS diamond_pickaxe was enchanted
+PASS diamond_pickaxe slot 2 predicted [efficiency:2], got [efficiency:2]
+FAIL locked from two XP seeds across the throw (On a server the table only shares half the XP seed (????DB5D). Put an enchantable item in the table to work out the rest.)
+round 3: book slot 3, table synced FFFFDB5D, worked out C395DB5D after 11 ticks, server has C395DB5D, levels [7, 23, 30], Apotheosis E15.0 Q15% A0%+, status LOCKED/TWO_SEEDS
+PASS server answered the XP seed query
+PASS the table synced only the low 16 bits (FFFFDB5D)
+PASS worked out the full XP seed exactly: C395DB5D vs C395DB5D
+PASS all three levels predicted: 7/23/30 vs table 7/23/30
+PASS no table problem (null)
+PASS book was enchanted
+PASS book slot 3 predicted [unbreaking:3], got [unbreaking:3]
+
+user plans: 17 made, 16 delivered exactly as planned, 0 skipped (no plan within the drop limit); items picked back up while dropping: 627
+rounds 3: full XP seed worked out exactly in 3, not yet pinned down in 0 (a consensus offer checked in 0)
+passed 280, failed 1
+SELFTEST FAILED
+

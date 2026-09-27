@@ -62,7 +62,7 @@ public final class Mc {
     /** True when the open screen pauses singleplayer (the table and inventory screens do). */
     public static boolean currentScreenPauses() {
         Screen screen = currentScreen();
-        return screen != null && screen.func_231178_ax__(); // isPauseScreen
+        return screen != null && screen.func_231177_au__(); // isPauseScreen
     }
 
     /** {@code minecraft.displayGuiScreen(screen)} */
@@ -231,7 +231,7 @@ public final class Mc {
         RenderSystem.enableDepthTest();
         RenderHelper.func_227780_a_();   // RenderHelper.enableStandardItemLighting()
         renderer.field_77023_b = 100.0F; // itemRenderer.zLevel
-        renderer.func_175042_a(stack, x, y); // renderItemAndEffectIntoGUI(stack, x, y)
+        renderer.func_175042_a(stack, x, y); // renderItemIntoGUI(stack, x, y): the icon, no glint
         renderer.field_77023_b = 0.0F;
         RenderHelper.func_74518_a();     // RenderHelper.disableStandardItemLighting()
         RenderSystem.disableDepthTest();
@@ -254,12 +254,11 @@ public final class Mc {
     }
 
     /**
-     * The mod's body text. Drawn with a drop shadow: the GUI's light text needs the shadow to
-     * read on the grey container panel (and it does no harm on the darker overlays), which is
-     * what keeps every label legible instead of dark-on-grey.
+     * The mod's body text, drawn without a shadow ({@code font.drawString}); the colours in
+     * {@code Theme} are chosen to read on the panels as they are.
      */
     public static void text(MatrixStack ms, String s, int x, int y, int color) {
-        font().func_238421_b_(ms, s, x, y, color); // drawStringWithShadow
+        font().func_238421_b_(ms, s, x, y, color); // drawString
     }
 
     /** {@code font.drawString(ms, text, x, y, color)} — genuinely no shadow, for rare flat text. */

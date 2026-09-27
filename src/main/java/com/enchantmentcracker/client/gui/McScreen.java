@@ -180,7 +180,7 @@ public abstract class McScreen extends Screen {
     }
 
     @Override
-    public boolean func_231178_ax__() { // isPauseScreen()
+    public boolean func_231177_au__() { // isPauseScreen()
         return pausesGame();
     }
 }

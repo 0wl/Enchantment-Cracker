@@ -231,6 +231,48 @@ public final class PlanTab implements CrackerTab {
      * else. Returns a warning when the real enchantment is next and the table holds a different
      * enchantable item, else null.
      */
+    /**
+     * Why clicking enchant button {@code slot} now would spoil the active plan, or null when the
+     * click is fine. The table screen holds such a click back (Shift-click overrides), since the
+     * real enchantment is the one step that cannot be undone.
+     */
+    public static String enchantBlockReason(CrackerState state, EnchantCalculator.Result plan, int slot) {
+        if (plan == null) {
+            return null;
+        }
+        String item = Mc.itemName(plan.item != null ? plan.item : state.getSelectedItem());
+        String inTable = state.getTableItem();
+        switch (state.getPlanStage()) {
+            case DROPPING:
+                return "the plan still needs " + state.getDropsRemaining() + " more item drop"
+                        + (state.getDropsRemaining() == 1 ? "" : "s") + " before any enchanting.";
+            case OVERSHOT:
+                return "more items were dropped than the plan needs, so it no longer fits. Plan again.";
+            case DUMMY:
+                // The real item in for the dummy would get a throwaway enchantment. A book plan's
+                // dummy is naturally a book too, so only other items are held back (Shift-click
+                // for a spare of the same kind).
+                return plan.item != null && plan.item.equals(inTable) && !"book".equals(plan.item)
+                        ? "this step is the dummy: enchant something cheap first (a book), not your " + item
+                        + ". Shift-click if this one is a spare." : null;
+            case CHECKING:
+                return "the seed after the dummy is not confirmed yet. Keep the item in for a moment.";
+            case OFF_COURSE:
+                return "the table is not on the planned seed (something else used your random numbers). "
+                        + "Plan again; the seed is still tracked.";
+            case FINAL: {
+                String wrong = wrongItemWarning(state, plan);
+                if (wrong != null) {
+                    return wrong;
+                }
+                return slot != plan.slot && plan.item != null && plan.item.equals(inTable)
+                        ? "the plan says slot " + (plan.slot + 1) + ", not slot " + (slot + 1) + "." : null;
+            }
+            default:
+                return null;
+        }
+    }
+
     public static String wrongItemWarning(CrackerState state, EnchantCalculator.Result plan) {
         if (plan == null || plan.item == null || state.getPlanStage() != CrackerState.PlanStage.FINAL
                 || !state.isTableOpen()) {
@@ -239,13 +281,24 @@ public final class PlanTab implements CrackerTab {
         String inTable = state.getTableItem();
         int[] levels = state.getTableLevels();
         boolean offered = levels[0] != 0 || levels[1] != 0 || levels[2] != 0; // not an already-enchanted item
-        if (inTable == null || !offered || inTable.equals(plan.item)
-                || com.enchantmentcracker.core.CrackItems.getEnchantability(inTable) <= 0) {
+        if (inTable == null || !offered || com.enchantmentcracker.core.CrackItems.getEnchantability(inTable) <= 0) {
             return null;
         }
-        return "This plan is for your " + Mc.itemName(plan.item) + ", not " + Mc.itemName(inTable)
-                + ": at this seed that gets different enchantments. Put the " + Mc.itemName(plan.item)
-                + " in, or plan again for the " + Mc.itemName(inTable) + " (the seed is still tracked).";
+        if (!inTable.equals(plan.item)) {
+            return "This plan is for your " + Mc.itemName(plan.item) + ", not " + Mc.itemName(inTable)
+                    + ": at this seed that gets different enchantments. Put the " + Mc.itemName(plan.item)
+                    + " in, or plan again for the " + Mc.itemName(inTable) + " (the seed is still tracked).";
+        }
+        // Right item and seed, so the table must show the plan's numbers; if not, its setup differs.
+        if (plan.setup != null) {
+            int[] expected = plan.setup.levels(plan.xpSeed, plan.item);
+            if (!java.util.Arrays.equals(expected, levels)) {
+                return "The table shows " + levels[0] + "/" + levels[1] + "/" + levels[2] + " but the plan expects "
+                        + expected[0] + "/" + expected[1] + "/" + expected[2] + ": the table is not set up as planned ("
+                        + plan.setup.describe() + "). Fix the table or plan again before enchanting.";
+            }
+        }
+        return null;
     }
 
     /**
@@ -271,6 +324,9 @@ public final class PlanTab implements CrackerTab {
                         ? "Dummy done and the table is on the planned seed. Enchant your " + item
                         + " in slot " + (plan.slot + 1) + "."
                         : "Enchant your " + item + " in slot " + (plan.slot + 1) + ".";
+            case CHECKING:
+                return "Dummy done. Put your " + item + " in the table so the cracker can confirm the seed "
+                        + "before you enchant.";
             case OFF_COURSE:
                 return "The table is not on the planned seed (a drop was missed, or something else used "
                         + "your random numbers). Recalculate before enchanting.";

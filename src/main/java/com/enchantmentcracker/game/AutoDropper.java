@@ -20,8 +20,12 @@ import net.minecraft.item.ItemStack;
  * at a junk slot, so it always throws the junk and never whatever you are holding. Before
  * dropping it closes any screen that pauses singleplayer (the enchanting table and inventory
  * screens do), so the thrown items actually fly and scatter away instead of piling at your feet
- * on a frozen server. The drops are client-simulated and counted by the game's own toss events,
- * so they are tracked on servers exactly like manual ones.
+ * on a frozen server.
+ *
+ * <p>It aims at drops the server <em>made</em>, as counted by {@link CrackerState} (on a server:
+ * from the items it spawns), not at clicks sent: a server can ignore a click, and a drop that did
+ * not happen must not be counted. So it keeps a limited number of clicks in flight, and resends
+ * only if no drop has arrived for a while.
  */
 public final class AutoDropper {
 
@@ -33,8 +37,17 @@ public final class AutoDropper {
 
     private static long highlightUntil;
 
-    private static int remaining;
-    private static int dropped;
+    /** Clicks allowed ahead of the drops the server has confirmed. */
+    private static final int MAX_IN_FLIGHT = 12;
+    /** Ticks without a confirmed drop after which unconfirmed clicks count as lost. */
+    private static final int STALL_TICKS = 60;
+
+    private static boolean running;
+    private static int target;
+    private static int sent;
+    private static int baseDrops;
+    private static int lastConfirmed;
+    private static int stallTicks;
     private static int perTick = 2;
     private static String message = "";
 
@@ -106,11 +119,16 @@ public final class AutoDropper {
     // ------------------------------------------------------------------ dropping
 
     public static boolean isRunning() {
-        return remaining > 0;
+        return running;
+    }
+
+    /** Drops the server has made since this run started. */
+    private static int confirmed() {
+        return com.enchantmentcracker.core.CrackerState.get().getItemsDropped() - baseDrops;
     }
 
     public static int getRemaining() {
-        return remaining;
+        return running ? Math.max(0, target - confirmed()) : 0;
     }
 
     public static String getMessage() {
@@ -144,22 +162,41 @@ public final class AutoDropper {
         if (Mc.currentScreenPauses()) {
             Mc.openScreen(null);
         }
-        remaining = count;
-        dropped = 0;
+        running = true;
+        target = count;
+        sent = 0;
+        baseDrops = com.enchantmentcracker.core.CrackerState.get().getItemsDropped();
+        lastConfirmed = 0;
+        stallTicks = 0;
         message = "Dropping " + count + " " + Mc.itemName(junkItem) + "...";
     }
 
     public static void stop() {
-        if (remaining > 0) {
-            message = "Stopped after " + dropped + ".";
+        if (running) {
+            message = "Stopped after " + confirmed() + ".";
         }
-        remaining = 0;
+        running = false;
     }
 
     /** Called every client tick. */
     public static void tick() {
-        if (remaining <= 0 || Mc.player() == null) {
+        if (!running || Mc.player() == null) {
             return;
+        }
+        int done = confirmed();
+        if (done >= target) {
+            running = false;
+            message = "Dropped " + done + " " + Mc.itemName(junkItem) + ".";
+            Mc.chat("§a[Cracker] " + message);
+            return;
+        }
+        if (done != lastConfirmed) {
+            lastConfirmed = done;
+            stallTicks = 0;
+        } else if (sent > done && ++stallTicks > STALL_TICKS) {
+            // Clicks the server ignored (it can, while it resyncs a window): send those again.
+            sent = done;
+            stallTicks = 0;
         }
         Container container = Mc.openContainer();
         if (container == null) {
@@ -170,22 +207,17 @@ public final class AutoDropper {
             message = "Put down the item on your cursor to keep dropping.";
             return;
         }
-        for (int i = 0; i < perTick && remaining > 0; i++) {
+        for (int i = 0; i < perTick && sent < target && sent - done < MAX_IN_FLIGHT; i++) {
             Slot slot = findJunkSlot(container);
             if (slot == null) {
-                message = "Ran out of " + Mc.itemName(junkItem) + " with " + remaining + " still to drop.";
+                message = "Ran out of " + Mc.itemName(junkItem) + " with " + (target - done) + " still to drop.";
                 Mc.chat("§c[Cracker] " + message);
-                remaining = 0;
+                running = false;
                 return;
             }
             // playerController.windowClick(windowId, slotNumber, 0, THROW, player): throw one junk item
             Mc.windowClick(container.field_75152_c, slot.field_75222_d, 0, ClickType.THROW);
-            remaining--;
-            dropped++;
-        }
-        if (remaining == 0) {
-            message = "Dropped " + dropped + " " + Mc.itemName(junkItem) + ".";
-            Mc.chat("§a[Cracker] " + message);
+            sent++;
         }
     }
 

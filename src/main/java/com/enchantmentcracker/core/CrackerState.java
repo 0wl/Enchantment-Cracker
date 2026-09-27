@@ -28,6 +28,8 @@ public final class CrackerState {
     private static final int PAIR_LIMIT = 1024;
     /** Largest candidate set a locked seed is re-synced against over the whole drift window. */
     private static final int RESYNC_SET_LIMIT = 64;
+    /** How far back a re-sync looks for drops counted that never happened: 512 drops. */
+    private static final int RESYNC_BACK_WINDOW = 2048;
 
     public static CrackerState get() {
         return INSTANCE;
@@ -548,38 +550,50 @@ public final class CrackerState {
 
     /** The seed is locked and the table moved on to a new XP seed: find how many steps it took. */
     private void resync(int[] current) {
+        if (current.length > RESYNC_SET_LIMIT) {
+            return; // too many candidates to search safely; wait for a narrower view
+        }
         int late = itemsDropped - seedChangeDrops;
         // The enchantment came before the drops made since the seed appeared.
         long before = PlayerSeed.advance(playerSeed, -late * PlayerSeed.STEPS_PER_ITEM_DROP);
-        int extra = -1;
-        if (current.length == 1) {
-            extra = PlayerSeed.stepsUntilXpSeed(PlayerSeed.next(before), current[0], RESYNC_WINDOW);
-        } else if (current.length <= RESYNC_SET_LIMIT) {
-            int[] sorted = current.clone();
-            java.util.Arrays.sort(sorted);
-            long seed = PlayerSeed.next(before);
-            for (int steps = 0; steps <= RESYNC_WINDOW; steps++, seed = PlayerSeed.next(seed)) {
+        int[] sorted = current.clone();
+        java.util.Arrays.sort(sorted);
+        // Where the enchantment's step landed: normally right after the tracked state; later if
+        // something else used the RNG; earlier if drops were counted that the server never made.
+        long expected = PlayerSeed.next(before);
+        Long made = null;
+        int offset = 0;
+        long seed = expected;
+        for (int steps = 0; steps <= RESYNC_WINDOW; steps++, seed = PlayerSeed.next(seed)) {
+            if (java.util.Arrays.binarySearch(sorted, PlayerSeed.xpSeedOf(seed)) >= 0) {
+                made = seed;
+                offset = steps;
+                break;
+            }
+        }
+        if (made == null) {
+            seed = expected;
+            for (int back = 1; back <= RESYNC_BACK_WINDOW; back++) {
+                seed = PlayerSeed.previous(seed);
                 if (java.util.Arrays.binarySearch(sorted, PlayerSeed.xpSeedOf(seed)) >= 0) {
-                    extra = steps;
+                    made = seed;
+                    offset = -back;
                     break;
                 }
             }
-        } else {
-            return; // too many candidates to search safely; wait for a narrower view
         }
-        diag("Re-sync " + list(current) + ": " + (extra < 0 ? "not found" : extra + " extra step(s)"));
-        if (extra >= 0) {
-            long made = PlayerSeed.advance(before, extra + 1);
+        diag("Re-sync " + list(current) + ": " + (made == null ? "not found" : offset + " step(s) off"));
+        if (made != null) {
             playerSeed = PlayerSeed.advance(made, late * PlayerSeed.STEPS_PER_ITEM_DROP);
-            driftSteps += extra;
+            driftSteps += Math.abs(offset);
             hasTableXpSeed = true;
             tableXpSeed = PlayerSeed.xpSeedOf(made);
             tableXpSeedPartial = false;
             partialSet = null;
             partialCount = -1;
-            statusMessage = extra == 0
-                    ? "In sync."
-                    : "Re-synced: " + extra + " unexpected RNG step" + (extra == 1 ? "" : "s") + " caught up.";
+            statusMessage = offset == 0 ? "In sync."
+                    : offset > 0 ? "Re-synced: " + offset + " unexpected RNG step" + (offset == 1 ? "" : "s") + " caught up."
+                    : "Re-synced: " + (-offset) + " RNG step" + (offset == -1 ? "" : "s") + " counted that never happened.";
             return;
         }
         if (current.length > 1) {
@@ -968,6 +982,8 @@ public final class CrackerState {
         OVERSHOT,
         /** Drops done; waiting for the dummy enchantment. */
         DUMMY,
+        /** The dummy is done, but the table's new XP seed is not confirmed yet. */
+        CHECKING,
         /** Ready for the real enchantment, and the table is on the planned XP seed. */
         FINAL,
         /** The table is not on the planned XP seed: something went off course. */
@@ -995,10 +1011,10 @@ public final class CrackerState {
         }
         // Next is the real enchantment: check the table is where the plan expects.
         Integer now = getEffectiveXpSeed();
-        if (now != null && now != plan.xpSeed) {
-            return PlanStage.OFF_COURSE;
+        if (now == null) {
+            return PlanStage.CHECKING; // never say "on the planned seed" without knowing it
         }
-        return PlanStage.FINAL;
+        return now == plan.xpSeed ? PlanStage.FINAL : PlanStage.OFF_COURSE;
     }
 
     /** How many items have been dropped since the current plan was worked out. */

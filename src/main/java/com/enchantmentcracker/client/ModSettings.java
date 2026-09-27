@@ -34,8 +34,12 @@ public final class ModSettings {
     public static int dropsPerTick = 2;
     /** The picked junk item, by id. */
     public static String junkItem = "";
-    /** Lock the seed from a thrown item's velocity, so a server needs one enchant, not two. */
-    public static boolean velocityCrack = true;
+    /**
+     * Lock the seed from a thrown item's velocity, so a server needs one enchant, not two. Off
+     * and not offered in Settings: in a real LAN test a throw still did not match (1.2.7), so
+     * the two-enchantment lock (the Lock seed button) is used until it is verified.
+     */
+    public static boolean velocityCrack = false;
 
     private ModSettings() {
     }
@@ -62,7 +66,8 @@ public final class ModSettings {
         autoDetectArea = bool(props, "autoDetectArea", autoDetectArea);
         areaOutlines = bool(props, "areaOutlines", areaOutlines);
         tablePrediction = bool(props, "tablePrediction", tablePrediction);
-        velocityCrack = bool(props, "velocityCrack", velocityCrack);
+        // A new key: "velocityCrack=true" saved by 1.2.6 and older must not switch it back on.
+        velocityCrack = bool(props, "velocityLock", velocityCrack);
         try {
             dropsPerTick = Math.max(1, Math.min(8, Integer.parseInt(props.getProperty("dropsPerTick", "2").trim())));
         } catch (NumberFormatException ignored) {
@@ -79,7 +84,7 @@ public final class ModSettings {
         props.setProperty("autoDetectArea", String.valueOf(autoDetectArea));
         props.setProperty("areaOutlines", String.valueOf(areaOutlines));
         props.setProperty("tablePrediction", String.valueOf(tablePrediction));
-        props.setProperty("velocityCrack", String.valueOf(velocityCrack));
+        props.setProperty("velocityLock", String.valueOf(velocityCrack));
         props.setProperty("dropsPerTick", String.valueOf(dropsPerTick));
         props.setProperty("junkItem", junkItem == null ? "" : junkItem);
         Path path = file();

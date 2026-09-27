@@ -85,11 +85,7 @@ public final class SettingsTab implements CrackerTab {
                 v -> ModSettings.tablePrediction = v, false,
                 "Writes the real enchantments of all three slots",
                 "under the enchanting table window."));
-        rows.add(new Row("Lock seed from thrown items", () -> ModSettings.velocityCrack,
-                v -> ModSettings.velocityCrack = v, false,
-                "On a server, once one XP seed is captured, throw an",
-                "item: its launch velocity pins the seed, so no second",
-                "enchantment is spent. Stand still, look roughly level."));
+        // "Lock seed from thrown items" is not offered until it is verified on a real server.
     }
 
     @Override

@@ -45,6 +45,8 @@ public class FeatureTests {
         anvilFromHeldItem();
         System.out.println("== EnchantCalculator (T5: drop-search ceiling) ==");
         dropCeiling();
+        System.out.println("== VelocityCracker vs a literal transcription of PlayerEntity#dropItem ==");
+        velocityBitExact();
         System.out.println("== PartialXpSeed (servers sync only 16 bits of the XP seed) ==");
         partialXpSeed();
         System.out.println("== PlayerSeed.solveSets (lock from candidate sets, drops between) ==");
@@ -57,6 +59,69 @@ public class FeatureTests {
         if (failures != 0) {
             System.exit(1);
         }
+    }
+
+    // ------------------------------------------------------------------ velocity, bit for bit
+
+    private static final float[] MC_SIN = new float[65536];
+
+    static {
+        for (int i = 0; i < 65536; i++) {
+            MC_SIN[i] = (float) Math.sin((double) i * Math.PI * 2.0D / 65536.0D);
+        }
+    }
+
+    private static float mcSin(float v) {
+        return MC_SIN[(int) (v * 10430.378F) & 65535];
+    }
+
+    private static float mcCos(float v) {
+        return MC_SIN[(int) (v * 10430.378F + 16384.0F) & 65535];
+    }
+
+    /**
+     * The thrown item's motion exactly as the decompiled 1.16.5 {@code PlayerEntity#dropItem(stack,
+     * false, true)} writes it, with a real {@code java.util.Random} in the player's state.
+     */
+    private static double[] vanillaDrop(long state, float yaw, float pitch) throws Exception {
+        java.util.Random rand = new java.util.Random();
+        java.lang.reflect.Field seed = java.util.Random.class.getDeclaredField("seed");
+        seed.setAccessible(true);
+        ((java.util.concurrent.atomic.AtomicLong) seed.get(rand)).set(state);
+        float f8 = mcSin(pitch * ((float) Math.PI / 180));
+        float f2 = mcCos(pitch * ((float) Math.PI / 180));
+        float f3 = mcSin(yaw * ((float) Math.PI / 180));
+        float f4 = mcCos(yaw * ((float) Math.PI / 180));
+        float f5 = rand.nextFloat() * ((float) Math.PI * 2);
+        float f6 = 0.02f * rand.nextFloat();
+        return new double[]{(double) (-f3 * f2 * 0.3f) + Math.cos(f5) * (double) f6,
+                -f8 * 0.3f + 0.1f + (rand.nextFloat() - rand.nextFloat()) * 0.1f,
+                (double) (f4 * f2 * 0.3f) + Math.sin(f5) * (double) f6};
+    }
+
+    private static void velocityBitExact() {
+        java.util.Random rng = new java.util.Random(5);
+        int bad = 0;
+        int runs = 100_000;
+        try {
+            for (int i = 0; i < runs; i++) {
+                long state = rng.nextLong() & 0xFFFF_FFFF_FFFFL;
+                float yaw = (rng.nextFloat() - 0.5F) * 720F;
+                float pitch = (rng.nextFloat() - 0.5F) * 180F;
+                double[] want = vanillaDrop(state, yaw, pitch);
+                VelocityCracker.Velocity got = VelocityCracker.velocityFor(state, yaw, pitch);
+                // What the server sends: each component packed to 1/8000 (Math.cos/sin may differ in the
+                // last bit between JIT and interpreter, on the server too, but never in the packed value).
+                if (VelocityCracker.pack(want[0]) != VelocityCracker.pack(got.x) || want[1] != got.y
+                        || VelocityCracker.pack(want[2]) != VelocityCracker.pack(got.z)) {
+                    bad++;
+                }
+            }
+        } catch (Exception e) {
+            check(false, "vanilla transcription failed: " + e);
+            return;
+        }
+        check(bad == 0, "thrown-item velocity as the server sends it identical to vanilla in " + (runs - bad) + " of " + runs);
     }
 
     // ------------------------------------------------------------------ servers
@@ -184,6 +249,30 @@ public class FeatureTests {
             state.observeXpSeed(known);
         }
         check(state.getPlayerSeed() == server && state.getDriftSteps() == 0, "still exact after the next enchantment");
+        state.resetSeed();
+
+        // Drops counted that the server never made: the next enchantment re-syncs backwards.
+        state.setManually(0x0000_1357_9BDF_2468L);
+        long truth = 0x0000_1357_9BDF_2468L;
+        state.observeXpSeed(PlayerSeed.xpSeedOf(truth)); // first table view: a baseline
+        state.onItemDropped();
+        state.onItemDropped();
+        state.onItemDropped();
+        truth = PlayerSeed.advance(truth, 4); // the server made only one of the three
+        truth = PlayerSeed.next(truth);       // enchantment
+        int made = PlayerSeed.xpSeedOf(truth);
+        check(state.knownFullXpSeed(PartialXpSeed.lowBits(made)) == null, "a miscounted lock cannot name the new XP seed");
+        state.notePartialXpSeed(PartialXpSeed.lowBits(made), PartialXpSeed.ALL, null);
+        state.observeXpSeed(made); // worked out from the table
+        check(state.isLocked() && state.getPlayerSeed() == truth,
+                "re-synced backwards over 2 phantom drops: " + state.getStatusMessage());
+        // And forwards over steps something else used.
+        truth = PlayerSeed.advance(truth, 7);
+        truth = PlayerSeed.next(truth);
+        made = PlayerSeed.xpSeedOf(truth);
+        state.notePartialXpSeed(PartialXpSeed.lowBits(made), PartialXpSeed.ALL, null);
+        state.observeXpSeed(made);
+        check(state.isLocked() && state.getPlayerSeed() == truth, "re-synced forwards over 7 unexpected steps");
         state.resetSeed();
 
         // A profile saved by 1.2.4 on a server holds only the synced half: not a seed.

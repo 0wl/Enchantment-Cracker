@@ -90,7 +90,9 @@ public final class VelocityCracker {
         float f8 = 0.02F * r2;
 
         double x = (double) (-sinYaw * cosPitch * f2) + Math.cos((double) f7) * (double) f8;
-        double y = (double) (-sinPitch * f2 + 0.1F) + (r3 - r4) * 0.1F;
+        // All float, widened once at the end, exactly as PlayerEntity#dropItem computes it: summing
+        // the last term in double instead changes the low bits and so the packed network value.
+        double y = (double) (-sinPitch * f2 + 0.1F + (r3 - r4) * 0.1F);
         double z = (double) (cosYaw * cosPitch * f2) + Math.sin((double) f7) * (double) f8;
         return new Velocity(x, y, z);
     }
