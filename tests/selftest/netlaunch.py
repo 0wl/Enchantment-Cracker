@@ -70,6 +70,12 @@ shutil.copy(TEST_JAR, game / 'mods')
 if mode == 'apoth':
     for jar in APOTH_JARS:
         shutil.copy(PACK_MODS / jar, game / 'mods')
+# A wrong remembered XP seed for this server, as an old version could leave behind: the table
+# must reject it rather than predict from it. The fresh test player's XP seed is 0, so its low
+# half matches, and it is not a sign-extended half-seed, so only the table check can catch it.
+(game / 'config' / 'enchcracker' / 'worlds').mkdir(parents=True)
+(game / 'config' / 'enchcracker' / 'worlds' / ('mp_127.0.0.1_%d.properties' % PORT)).write_text(
+    'xpSeed=12340000\nitem=diamond_sword\nmaxShelves=15\nwishlist=\n')
 (game / 'options.txt').write_text('\n'.join([
     'pauseOnLostFocus:false', 'renderDistance:4', 'guiScale:2', 'tutorialStep:none',
     'skipMultiplayerWarning:true', 'joinedFirstServer:true', 'soundCategory_master:0.0',

@@ -347,6 +347,11 @@ public final class Mc {
         return player() == null ? null : player().field_71070_bA;
     }
 
+    /** {@code playerController.sendEnchantPacket(windowId, slot)}: clicks one of the table's three offers. */
+    public static void enchant(int windowId, int slot) {
+        mc().field_71442_b.func_78756_a(windowId, slot);
+    }
+
     /** {@code player.inventory.getItemStack()} — whatever is held on the mouse cursor. */
     public static ItemStack cursorStack() {
         return player().field_71071_by.func_70445_o();

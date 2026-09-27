@@ -6,6 +6,8 @@ import com.enchantmentcracker.client.gui.Widgets;
 import com.enchantmentcracker.core.CrackerState;
 import com.enchantmentcracker.core.EnchantCalculator;
 import com.enchantmentcracker.game.AutoDropper;
+import com.enchantmentcracker.game.AutoLocker;
+import com.enchantmentcracker.game.Mc;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraftforge.client.event.GuiScreenEvent;
 
@@ -37,6 +39,17 @@ final class TableButtons {
         buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Predict", EnchantTablePrediction::toggle)
                 .labelFrom(() -> ModSettings.tablePrediction ? "Predict: on" : "Predict: off")
                 .tooltip("Show the real enchantments", "of all three slots below the table."));
+        // On a server the seed has to be locked from two enchantments first; one click does it.
+        if (Mc.integratedServer() == null) {
+            buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Lock seed", AutoLocker::toggle)
+                    .labelFrom(() -> AutoLocker.isRunning() ? "Locking..."
+                            : CrackerState.get().isLocked() ? "Locked" : "Lock seed")
+                    .selectedWhen(AutoLocker::isRunning)
+                    .tooltip("Enchant plain books in slot 1 until the",
+                            "seed is locked (usually two: 1 level and",
+                            "1 lapis each). Needs books and lapis.",
+                            "Click again to stop."));
+        }
         if (ModSettings.autoDrop) {
             buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Auto drop", ClientEvents::startPlanDrops)
                     .labelFrom(TableButtons::dropLabel)

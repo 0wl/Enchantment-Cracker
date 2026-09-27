@@ -226,11 +226,38 @@ public final class PlanTab implements CrackerTab {
     }
 
     /**
+     * A plan only holds for the item it was worked out for: another item has another
+     * enchantability and takes other enchantments, so at the very same seed it gets something
+     * else. Returns a warning when the real enchantment is next and the table holds a different
+     * enchantable item, else null.
+     */
+    public static String wrongItemWarning(CrackerState state, EnchantCalculator.Result plan) {
+        if (plan == null || plan.item == null || state.getPlanStage() != CrackerState.PlanStage.FINAL
+                || !state.isTableOpen()) {
+            return null;
+        }
+        String inTable = state.getTableItem();
+        int[] levels = state.getTableLevels();
+        boolean offered = levels[0] != 0 || levels[1] != 0 || levels[2] != 0; // not an already-enchanted item
+        if (inTable == null || !offered || inTable.equals(plan.item)
+                || com.enchantmentcracker.core.CrackItems.getEnchantability(inTable) <= 0) {
+            return null;
+        }
+        return "This plan is for your " + Mc.itemName(plan.item) + ", not " + Mc.itemName(inTable)
+                + ": at this seed that gets different enchantments. Put the " + Mc.itemName(plan.item)
+                + " in, or plan again for the " + Mc.itemName(inTable) + " (the seed is still tracked).";
+    }
+
+    /**
      * One line about the current stage: what to do next, or what went wrong. Also used for
      * the chat messages sent as each step completes.
      */
     public static String stageNote(CrackerState state, EnchantCalculator.Result plan) {
         String item = Mc.itemName(plan.item != null ? plan.item : state.getSelectedItem());
+        String wrong = wrongItemWarning(state, plan);
+        if (wrong != null) {
+            return wrong;
+        }
         switch (state.getPlanStage()) {
             case DROPPING:
                 return "Dropped " + state.getDropsSincePlan() + " of " + plan.itemsToThrow + ".";

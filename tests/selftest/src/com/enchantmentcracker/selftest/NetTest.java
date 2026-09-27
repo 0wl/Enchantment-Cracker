@@ -53,6 +53,7 @@ final class NetTest {
     static int unresolvedRounds;
     static int consensusRounds;
     static boolean lockedAtStart;
+    static int booksBefore;
     static Set<String> consensus;
     static EnchantCalculator.SlotPreview[] predicted;
     static String roundItem;
@@ -107,8 +108,22 @@ final class NetTest {
         step(10, NetTest::addLapis);
     }
 
+    /** Puts another cobblestone stack in the hand once the held one runs out. */
+    static void refillHand() {
+        if (!Mc.heldStack().func_190926_b()) {
+            return;
+        }
+        for (Slot slot : Mc.player().field_71069_bz.field_75151_b) {
+            if (slot.func_75216_d() && "cobblestone".equals(Mc.idOf(slot.func_75211_c().func_77973_b()))) {
+                Mc.windowClick(0, slot.field_75222_d, Mc.player().field_71071_by.field_70461_c, ClickType.SWAP);
+                return;
+            }
+        }
+    }
+
     /** A real press of the drop key, so the mod counts it the way it counts a player's. */
     static void pressQ() {
+        refillHand();
         // KeyBinding.onTick(gameSettings.keyBindDrop.getKey())
         net.minecraft.client.settings.KeyBinding.func_197981_a(mc().field_71474_y.field_74316_C.getKey());
     }
@@ -354,7 +369,7 @@ final class NetTest {
             request.setups = Collections.singletonList(state.getTableSetup());
             request.playerLevel = 1000;
             request.wanted = Collections.singletonList(new EnchantmentInstance("looting", 3));
-            request.maxThrows = 400;
+            request.maxThrows = 200; // what the cobblestone given can cover
             List<EnchantCalculator.Result> results = EnchantCalculator.calculateOptions(request);
             check(!results.isEmpty(), "planner found a way to Looting III");
             plan = results.isEmpty() ? null : results.get(0);
@@ -414,7 +429,26 @@ final class NetTest {
         });
         step(15, () -> {
             if (plan != null) {
+                place("diamond_boots", 0);
+            }
+        });
+        step(25, () -> {
+            if (plan == null) {
+                return;
+            }
+            String warning = com.enchantmentcracker.client.gui.tabs.PlanTab.wrongItemWarning(CrackerState.get(), plan);
+            check(warning != null, "boots in the table for a sword plan are warned about: " + warning);
+            click(0, ClickType.QUICK_MOVE);
+        });
+        step(15, () -> {
+            if (plan != null) {
                 place("diamond_sword", 0);
+            }
+        });
+        step(20, () -> {
+            if (plan != null) {
+                check(com.enchantmentcracker.client.gui.tabs.PlanTab.wrongItemWarning(CrackerState.get(), plan) == null,
+                        "no warning with the planned item in the table");
             }
         });
         step(25, () -> {
@@ -458,6 +492,22 @@ final class NetTest {
         step(20, () -> {
         });
         reopen();
+        step(10, () -> {
+            CrackerState.get().resetSeed();
+            booksBefore = count("book");
+            com.enchantmentcracker.game.AutoLocker.toggle();
+            check(com.enchantmentcracker.game.AutoLocker.isRunning(), "Lock seed button started");
+        });
+        stepUntil(() -> !com.enchantmentcracker.game.AutoLocker.isRunning() || ++waitTicks > 1200, () -> {
+            waitTicks = 0;
+            CrackerState state = CrackerState.get();
+            log("  lock seed: " + com.enchantmentcracker.game.AutoLocker.getMessage() + " (" + (booksBefore - count("book"))
+                    + " books used)");
+            check(state.isLocked() && state.getSource() == CrackerState.Source.TWO_SEEDS,
+                    "Lock seed button locked the seed (" + state.getStatusMessage() + ")");
+            check(tableContainer() != null && tableContainer().func_75139_a(0).func_75211_c().func_190926_b(),
+                    "and left the table's item slot empty");
+        });
         round("diamond_helmet", 2);
         round("golden_sword", 2);
         round("iron_axe", 1);

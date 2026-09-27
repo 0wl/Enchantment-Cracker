@@ -54,6 +54,11 @@ public final class TableWatcher {
     private static int stableTicks;
     /** The open table's full XP seed, or null while it is not known (yet). */
     private static Integer currentXpSeed;
+    /** The table container seen last tick, and for how many ticks it has been open. */
+    private static EnchantmentContainer lastContainer;
+    private static int openTicks;
+    /** How long a freshly opened table may still be waiting for the server's data. */
+    private static final int SYNC_GRACE_TICKS = 20;
 
     private TableWatcher() {
     }
@@ -104,16 +109,24 @@ public final class TableWatcher {
         if (container == null) {
             state.setTableClosed();
             currentXpSeed = null;
+            lastContainer = null;
             return;
+        }
+        if (container != lastContainer) {
+            lastContainer = container;
+            openTicks = 0;
+        } else if (openTicks < SYNC_GRACE_TICKS) {
+            openTicks++;
         }
 
         int synced = container.func_217005_f();            // getXPSeed()
         int[] levels = container.field_75167_g.clone();    // enchantLevels
         String item = itemIdIn(container);
         boolean hasLevels = levels[0] != 0 || levels[1] != 0 || levels[2] != 0;
-        // The window opens before the server's data packets arrive; an XP seed of exactly 0 on
-        // an empty table is almost certainly "not synced yet", not a real value.
-        boolean seedSynced = synced != 0 || hasLevels;
+        // The window opens before the server's data packets arrive, so an XP seed of 0 on an
+        // empty table just after opening means "not synced yet". Later it is real: on a server
+        // one XP seed in 65,536 has a low half of 0.
+        boolean seedSynced = synced != 0 || hasLevels || openTicks >= SYNC_GRACE_TICKS;
 
         // Own world (singleplayer, LAN host): the packet never left memory, so it is whole.
         boolean whole = Mc.isSingleplayer();
@@ -141,10 +154,18 @@ public final class TableWatcher {
         }
         lastBookshelves = bookshelves;
 
-        if (xpSeed == null && seedSynced) {
-            xpSeed = resolvePartial(container, setup, item, levels, hasLevels);
-            if (xpSeed == null && problem == null) {
-                problem = partialProblem(item, hasLevels);
+        if (!whole && seedSynced) {
+            PartialXpSeed.Observation seen = stableObservation(container, setup, item, levels, hasLevels);
+            // A remembered or predicted XP seed must fit what the table shows, or it goes.
+            if (xpSeed != null && seen != null && !seen.matches(xpSeed)) {
+                state.rejectTableXpSeed();
+                xpSeed = null;
+            }
+            if (xpSeed == null) {
+                xpSeed = resolvePartial(seen);
+                if (xpSeed == null && problem == null) {
+                    problem = partialProblem(item, hasLevels);
+                }
             }
         }
         currentXpSeed = xpSeed;
@@ -182,12 +203,24 @@ public final class TableWatcher {
         }
     }
 
+    /** Narrows the top half of a server's XP seed with {@code seen}, if any. Null until one fits. */
+    private static Integer resolvePartial(PartialXpSeed.Observation seen) {
+        if (seen != null) {
+            partial.observe(seen);
+        }
+        Integer resolved = partial.resolved();
+        if (resolved == null) {
+            CrackerState.get().notePartialXpSeed(partial.getLow(), partial.count(), partial.candidates());
+        }
+        return resolved;
+    }
+
     /**
-     * Works out the top half of a server's XP seed from what the table shows, once it has held
-     * still for a moment. Null until exactly one full XP seed fits.
+     * What the table shows, returned once, on the tick it has held still for
+     * {@link #STABLE_TICKS}; null on every other tick.
      */
-    private static Integer resolvePartial(EnchantmentContainer container, TableSetup setup, String item,
-                                          int[] levels, boolean hasLevels) {
+    private static PartialXpSeed.Observation stableObservation(EnchantmentContainer container, TableSetup setup,
+                                                               String item, int[] levels, boolean hasLevels) {
         if (setup != null && item != null && hasLevels) {
             EnchantmentInstance[] clues = cluesOf(container);
             @SuppressWarnings("unchecked")
@@ -216,16 +249,12 @@ public final class TableWatcher {
                 stableTicks = 0;
             }
             if (stableTicks == STABLE_TICKS) {
-                partial.observe(new PartialXpSeed.Observation(setup, item, levels, clues, clueLists, allClues));
+                return new PartialXpSeed.Observation(setup, item, levels, clues, clueLists, allClues);
             }
         } else {
             observationKey = null;
         }
-        Integer resolved = partial.resolved();
-        if (resolved == null) {
-            CrackerState.get().notePartialXpSeed(partial.getLow(), partial.count(), partial.candidates());
-        }
-        return resolved;
+        return null;
     }
 
     private static String partialProblem(String item, boolean hasLevels) {

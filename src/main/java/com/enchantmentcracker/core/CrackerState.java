@@ -144,6 +144,31 @@ public final class CrackerState {
     private CrackerState() {
     }
 
+    /**
+     * Where to write what the server path decides (seeds appearing, candidates, lock attempts),
+     * so a failure on someone's server can be worked through from their log. Set by the game layer.
+     */
+    private static java.util.function.Consumer<String> diagnostics = line -> { };
+
+    public static void setDiagnostics(java.util.function.Consumer<String> sink) {
+        diagnostics = sink == null ? line -> { } : sink;
+    }
+
+    private static void diag(String line) {
+        diagnostics.accept(line);
+    }
+
+    private static String list(int[] seeds) {
+        if (seeds == null) {
+            return "unknown";
+        }
+        StringBuilder sb = new StringBuilder().append(seeds.length).append(" [");
+        for (int i = 0; i < seeds.length && i < 40; i++) {
+            sb.append(i == 0 ? "" : " ").append(PlayerSeed.formatXpSeed(seeds[i]));
+        }
+        return sb.append(seeds.length > 40 ? " ...]" : "]").toString();
+    }
+
     // ------------------------------------------------------------------ accessors
 
     public synchronized long getPlayerSeed() {
@@ -265,6 +290,31 @@ public final class CrackerState {
         }
         if (partialSet != null) {
             seedKnown();
+        }
+    }
+
+    /**
+     * The table shows something the XP seed we took for it cannot produce: it was remembered
+     * wrongly or predicted from a wrong lock. Forget it, keeping only its low half (which the
+     * table does sync), so it is worked out again from the table. Not a new XP seed: nothing
+     * was enchanted.
+     */
+    public synchronized void rejectTableXpSeed() {
+        if (source == Source.DIRECT || !hasTableXpSeed || tableXpSeedPartial) {
+            return;
+        }
+        tableXpSeedPartial = true;
+        partialLow = PartialXpSeed.lowBits(tableXpSeed);
+        partialCount = -1;
+        partialSet = null;
+        if (status == Status.LOCKED) {
+            status = Status.UNKNOWN;
+            source = Source.NONE;
+            playerSeed = PlayerSeed.UNKNOWN;
+            pendingSet = null;
+            statusMessage = "The table does not match the locked seed. Enchant twice to lock it again.";
+        } else {
+            statusMessage = "The remembered XP seed does not fit this table; working it out again.";
         }
     }
 
@@ -398,6 +448,8 @@ public final class CrackerState {
         if (source == Source.DIRECT) {
             return; // the world itself is the source of truth; nothing to infer
         }
+        diag("XP seed changed (first " + first + ", stale " + staleXpSeed + ", drops so far " + itemsDropped
+                + ", status " + status + "); previous: " + list(previous));
         if (first) {
             currentStale = staleXpSeed;
             currentFirst = true;
@@ -426,6 +478,8 @@ public final class CrackerState {
         if (current == null) {
             return;
         }
+        diag("XP seed known: " + list(current) + " (stale " + currentStale + ", first " + currentFirst
+                + ", status " + status + ", drops since it appeared " + (itemsDropped - seedChangeDrops) + ")");
         if (currentStale) {
             statusMessage = "New session: this XP seed is from before you joined or respawned. "
                     + "Enchant twice to lock the new generator.";
@@ -457,6 +511,8 @@ public final class CrackerState {
         int dropsBetween = Math.max(0, seedChangeDrops - pendingDropBaseline);
         long[] solved = PlayerSeed.solveSets(pendingSet, current,
                 PlayerSeed.STEPS_PER_ENCHANT + dropsBetween * PlayerSeed.STEPS_PER_ITEM_DROP);
+        diag("Pairing " + list(pendingSet) + " -> " + list(current) + " with " + dropsBetween
+                + " drops between: " + solved.length + " solution(s)");
         if (solved.length == 1) {
             lock(solved[0]);
             return;
@@ -487,6 +543,7 @@ public final class CrackerState {
         partialSet = null;
         partialCount = -1;
         statusMessage = "Player seed locked from two XP seeds.";
+        diag("Locked: player seed " + PlayerSeed.format(playerSeed) + ", table XP seed " + PlayerSeed.formatXpSeed(tableXpSeed));
     }
 
     /** The seed is locked and the table moved on to a new XP seed: find how many steps it took. */
@@ -510,6 +567,7 @@ public final class CrackerState {
         } else {
             return; // too many candidates to search safely; wait for a narrower view
         }
+        diag("Re-sync " + list(current) + ": " + (extra < 0 ? "not found" : extra + " extra step(s)"));
         if (extra >= 0) {
             long made = PlayerSeed.advance(before, extra + 1);
             playerSeed = PlayerSeed.advance(made, late * PlayerSeed.STEPS_PER_ITEM_DROP);
@@ -723,6 +781,10 @@ public final class CrackerState {
             }
         }
         Integer xp = PlayerSeed.parseXpSeed(in.get("xpSeed"));
+        // 1.2.4 and older saved what a server's table synced: only the low 16 bits, sign-extended.
+        if (xp != null && xp == (short) (int) xp) {
+            xp = null;
+        }
         if (xp != null && source != Source.DIRECT) {
             hasTableXpSeed = true;
             tableXpSeedPartial = false;

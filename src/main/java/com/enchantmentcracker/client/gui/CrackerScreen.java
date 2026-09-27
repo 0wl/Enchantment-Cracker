@@ -76,6 +76,10 @@ public final class CrackerScreen extends McScreen {
     // ------------------------------------------------------------------- entry points
 
     public static void open(Tab tab) {
+        // Opened in front of a table (button or key): plan for what is in it, not for last time's item.
+        if (TableWatcher.openContainer() != null) {
+            prefillFromTable();
+        }
         if (!isVisible(tab)) {
             tab = Tab.SEED;
         }
@@ -110,7 +114,6 @@ public final class CrackerScreen extends McScreen {
 
     /** Opens the calculator with the open table's item and bookshelf count already filled in. */
     public static void openFromTable() {
-        prefillFromTable();
         open(Tab.CALCULATOR);
     }
 
@@ -137,7 +140,12 @@ public final class CrackerScreen extends McScreen {
     private static void prefillFromTable() {
         CrackerState state = CrackerState.get();
         String item = state.getTableItem();
-        if (item != null && com.enchantmentcracker.core.CrackItems.getEnchantability(item) > 0) {
+        int[] levels = state.getTableLevels();
+        boolean offered = levels[0] != 0 || levels[1] != 0 || levels[2] != 0; // not already enchanted
+        // Mid-plan the table holds the dummy or the finished item: switching to it would drop the plan.
+        CrackerState.PlanStage stage = state.getPlanStage();
+        boolean planUnderWay = stage != CrackerState.PlanStage.NONE && stage != CrackerState.PlanStage.DONE;
+        if (!planUnderWay && offered && item != null && com.enchantmentcracker.core.CrackItems.getEnchantability(item) > 0) {
             state.setSelectedItem(item);
         }
         int shelves = state.getTableBookshelves();

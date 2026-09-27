@@ -25,6 +25,20 @@ Newest first.
     named from its low half at once. The overlay shows offers all remaining candidates agree on.
   - Also fixed: closing an inventory with Esc/E while holding a stack on the cursor makes the
     server throw it (4 RNG steps) with no client-side toss event; now counted.
+  - 1.2.6, from playing on the DDSS2 server with 1.2.5:
+    - A half-seed saved by 1.2.4 in the per-world memory (`xpSeed=FFFFFB78`) was taken as a full
+      seed: confident but wrong predictions. Such values are ignored now, and any remembered or
+      predicted XP seed is checked against the table's numbers and hints before it is used
+      (`CrackerState.rejectTableXpSeed`).
+    - An XP seed whose low half is 0 (1 in 65,536) was read as "table not synced yet", so the
+      enchantment that made it was missed. 0 now only means that in the first second after opening.
+    - Plans are item-specific. The calculator kept a remembered item (a chestplate) while leggings
+      went in the table, so "Prot IV + Unbreaking III" came out as other enchantments with the seed
+      tracked perfectly. Opening the cracker in front of a table now takes the table's item (never
+      mid-plan), and the final step warns when the table holds another item than the plan's.
+    - *Lock seed* button beside the table (servers only): enchants books in slot 1 until locked.
+    - The server path writes `[seed]` lines to the game log (seeds appearing, candidates, pairings,
+      locks, re-syncs), so a failure on someone's server can be worked through from their log.
   - Verified against a real dedicated server over TCP (`tests/selftest/netlaunch.py`), with
     `/data get entity <you> XpSeed` as ground truth: Apotheosis 124/124, vanilla 123/123.
 

@@ -185,6 +185,22 @@ public class FeatureTests {
         }
         check(state.getPlayerSeed() == server && state.getDriftSteps() == 0, "still exact after the next enchantment");
         state.resetSeed();
+
+        // A profile saved by 1.2.4 on a server holds only the synced half: not a seed.
+        java.util.Map<String, String> profile = new java.util.HashMap<>();
+        profile.put("xpSeed", "FFFFFB78");
+        state.importProfile(profile);
+        check(!state.hasTableXpSeed(), "a saved half-seed (FFFFFB78) is not taken as an XP seed");
+        profile.put("xpSeed", "A0611930");
+        state.importProfile(profile);
+        check(state.hasTableXpSeed() && state.getTableXpSeed() == 0xA0611930, "a saved full XP seed is kept");
+
+        // The table disagrees with the remembered seed: it is dropped, only its low half kept.
+        state.rejectTableXpSeed();
+        check(state.getEffectiveXpSeed() == null && state.isTableXpSeedPartial()
+                && state.knownFullXpSeed(0x1930) == null, "a rejected XP seed is no longer used");
+        check(state.getTableXpSeedText().equals("????1930"), "only its low half is shown: " + state.getTableXpSeedText());
+        state.resetSeed();
     }
 
     // ------------------------------------------------------------------ PlayerSeed

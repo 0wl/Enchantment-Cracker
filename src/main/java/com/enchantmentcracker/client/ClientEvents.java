@@ -99,6 +99,7 @@ public final class ClientEvents {
         ModKeyBindings.drain();
         TableWatcher.syncFromWorld();
         TableWatcher.tick();
+        com.enchantmentcracker.game.AutoLocker.tick();
         if (ModSettings.autoDetectArea) {
             AreaTracker.tick();
         }
@@ -122,10 +123,20 @@ public final class ClientEvents {
      * follow along: drops counted, dummy enchanted (and whether the table landed on the
      * planned seed), final enchantment done.
      */
+    /** The table item last warned about as not the plan's; null when there is nothing to warn about. */
+    private static String warnedWrongItem;
+
     private static void announcePlanProgress() {
         CrackerState state = CrackerState.get();
         EnchantCalculator.Result plan = state.getPlan();
         CrackerState.PlanStage stage = state.getPlanStage();
+        // The wrong item in the table for the real enchantment: say so once per item.
+        String wrong = com.enchantmentcracker.client.gui.tabs.PlanTab.wrongItemWarning(state, plan);
+        String wrongKey = wrong == null ? null : state.getTableItem();
+        if (wrongKey != null && !wrongKey.equals(warnedWrongItem)) {
+            Mc.chat("\u00a7c[Cracker] \u00a7f" + wrong);
+        }
+        warnedWrongItem = wrongKey;
         if (plan != announcedPlan) {
             // A new plan: remember where it starts, announce nothing yet.
             announcedPlan = plan;
@@ -299,6 +310,7 @@ public final class ClientEvents {
         AutoDropper.stop();
 
         CrackerState state = CrackerState.get();
+        CrackerState.setDiagnostics(line -> EnchantmentCrackerMod.LOGGER.info("[seed] " + line));
         state.resetSeed();
         state.onNewPlayerEntity("Joined " + WorldProfiles.describeCurrent());
         worldKey = WorldProfiles.currentKey();
