@@ -928,6 +928,23 @@ public final class CrackerState {
         this.enchantsSincePlan = 0;
     }
 
+    /** The wishes the active plan was made for, so it can be made again if it stops fitting. */
+    private List<EnchantmentInstance> planWanted = new ArrayList<>();
+    private List<String> planUnwanted = new ArrayList<>();
+
+    public synchronized void setPlanGoal(List<EnchantmentInstance> wanted, List<String> unwanted) {
+        this.planWanted = wanted == null ? new ArrayList<>() : new ArrayList<>(wanted);
+        this.planUnwanted = unwanted == null ? new ArrayList<>() : new ArrayList<>(unwanted);
+    }
+
+    public synchronized List<EnchantmentInstance> getPlanWanted() {
+        return new ArrayList<>(planWanted);
+    }
+
+    public synchronized List<String> getPlanUnwanted() {
+        return new ArrayList<>(planUnwanted);
+    }
+
     public synchronized List<EnchantCalculator.Result> getPlanOptions() {
         return new ArrayList<>(planOptions);
     }

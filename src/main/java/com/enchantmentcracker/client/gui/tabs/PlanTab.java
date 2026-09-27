@@ -273,6 +273,21 @@ public final class PlanTab implements CrackerTab {
         }
     }
 
+    /**
+     * The plan's item is in the table, but the table shows other numbers than the plan expects at
+     * this seed: the table itself is not the one the plan was made for.
+     */
+    public static boolean tableMismatch(CrackerState state, EnchantCalculator.Result plan) {
+        if (plan == null || plan.item == null || plan.setup == null
+                || state.getPlanStage() != CrackerState.PlanStage.FINAL || !state.isTableOpen()) {
+            return false;
+        }
+        int[] levels = state.getTableLevels();
+        boolean offered = levels[0] != 0 || levels[1] != 0 || levels[2] != 0;
+        return offered && plan.item.equals(state.getTableItem())
+                && !java.util.Arrays.equals(plan.setup.levels(plan.xpSeed, plan.item), levels);
+    }
+
     public static String wrongItemWarning(CrackerState state, EnchantCalculator.Result plan) {
         if (plan == null || plan.item == null || state.getPlanStage() != CrackerState.PlanStage.FINAL
                 || !state.isTableOpen()) {

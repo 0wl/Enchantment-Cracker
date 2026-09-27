@@ -86,6 +86,10 @@ public final class SettingsTab implements CrackerTab {
                 "Writes the real enchantments of all three slots",
                 "under the enchanting table window."));
         // "Lock seed from thrown items" is not offered until it is verified on a real server.
+        rows.add(new Row("Plans may lower the table's power", () -> ModSettings.lowerTablePower,
+                v -> ModSettings.lowerTablePower = v, false,
+                "Apotheosis: plans may ask you to rebuild the table",
+                "with less Eterna. Off: plans use the table as it is."));
     }
 
     @Override

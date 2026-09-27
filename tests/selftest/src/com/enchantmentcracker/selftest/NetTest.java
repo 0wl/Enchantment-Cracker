@@ -316,6 +316,19 @@ final class NetTest {
     static int plansSkipped;
     static int pickedUpTotal;
     static int planShelves;
+    /** The cracker's own re-plan, to be carried out by the next userPlan instead of planning. */
+    static EnchantCalculator.Result presetPlan;
+    /** > 0: plan for a table of this Eterna but leave the table as it is (the user's slip). */
+    static int lowerTo = -1;
+    /** This plan is expected to be caught (off course / table mismatch) and re-planned. */
+    static boolean expectReplan;
+    static boolean planLowered;
+    /** The hidden /give's pickup-animation drop made one drop more than the plan needs. */
+    static boolean overshot;
+    /** Carrying out one of the cracker's re-plans: it may be caught again (hidden steps still unseen). */
+    static boolean mayBeCaught;
+    /** Only carry out a pending re-plan; do nothing when there is none. */
+    static boolean followUpOnly;
     static int cobbleBefore;
 
     /** Every shelf position around the table, bottom row first: 16 per row. */
@@ -440,6 +453,13 @@ final class NetTest {
         userPlan(false, item, wishes);
     }
 
+    /** Carries out the cracker's next re-plan, if it made one; otherwise does nothing. */
+    static void followUp(String item, EnchantmentInstance... wishes) {
+        step(1, () -> followUpOnly = true);
+        userPlan(false, item, wishes);
+        step(1, () -> followUpOnly = false);
+    }
+
     /**
      * @param hiddenStep a /give right after planning: two RNG steps the cracker cannot see (the
      *                   pickup sound's pitch), so the plan must be caught off course and held back
@@ -453,6 +473,23 @@ final class NetTest {
         refreshTable();
         step(20, () -> {
             CrackerState state = CrackerState.get();
+            expectReplan = hiddenStep || lowerTo > 0;
+            planLowered = lowerTo > 0;
+            mayBeCaught = false;
+            if (followUpOnly && presetPlan == null) {
+                plan = null; // nothing left to follow up
+                return;
+            }
+            if (presetPlan != null) { // carry out the plan the cracker made again by itself
+                plan = presetPlan;
+                presetPlan = null;
+                mayBeCaught = true;
+                plansMade++;
+                planShelves = -1;
+                log("  plan " + plansMade + " (the cracker's automatic re-plan): drop " + plan.itemsToThrow + ", slot "
+                        + (plan.slot + 1) + ", table " + plan.setup.describe() + ", gives " + plan.enchantments);
+                return;
+            }
             EnchantCalculator.Request request = new EnchantCalculator.Request();
             String why = com.enchantmentcracker.client.Planner.prepare(request, item, Arrays.asList(wishes),
                     Collections.emptyList(), 3);
@@ -461,6 +498,13 @@ final class NetTest {
                 return;
             }
             request.maxThrows = 1000;
+            check(request.setups.size() == 1 && request.setups.get(0).describe().equals(state.getTableSetup().describe()),
+                    "by default the planner only uses the table as it stands");
+            if (lowerTo > 0) {
+                com.enchantmentcracker.game.Apotheosis.Table now = (com.enchantmentcracker.game.Apotheosis.Table) state.getTableSetup();
+                request.setups = Collections.singletonList(new com.enchantmentcracker.game.Apotheosis.Table(
+                        now.stats().withEterna(lowerTo)));
+            }
             List<EnchantCalculator.Result> results = EnchantCalculator.calculateOptions(request);
             if (results.isEmpty()) {
                 plansSkipped++;
@@ -469,8 +513,9 @@ final class NetTest {
             }
             plan = results.get(0);
             state.setPlanOptions(results);
+            state.setPlanGoal(Arrays.asList(wishes), Collections.emptyList());
             plansMade++;
-            planShelves = shelvesFor(plan);
+            planShelves = lowerTo > 0 ? -1 : shelvesFor(plan); // lowered: the table is NOT rebuilt
             log("  plan " + plansMade + ": " + item + " " + Arrays.toString(wishes) + " -> drop " + plan.itemsToThrow
                     + ", dummy " + plan.needsDummy() + ", slot " + (plan.slot + 1) + ", table " + plan.setup.describe()
                     + (planShelves >= 0 ? " (rebuilt with " + planShelves + " shelves)" : " (as it stands)")
@@ -513,14 +558,22 @@ final class NetTest {
                 pickedUpTotal += Math.max(0, pickedUp);
                 log("    dropped " + state.getDropsSincePlan() + " (server-confirmed), " + pickedUp + " picked back up");
             }
+            // (the cracker may already have planned again by now: that counts as caught too)
+            overshot = hiddenStep && (state.getPlanStage() == CrackerState.PlanStage.OVERSHOT || state.getPlan() != plan);
+            if (overshot) {
+                // A plan with no drops: the /give's pickup animation is a real drop, one too many.
+                log("    the /give's pickup animation was a real drop: one more than this plan needs (overshot)");
+                check(CrackerState.get().getItemsDropped() > 0, "that drop was counted");
+                return;
+            }
             check(state.getDropsSincePlan() == Math.max(0, plan.itemsToThrow), "drops counted " + state.getDropsSincePlan()
                     + " == planned " + plan.itemsToThrow);
             check(state.getPlanStage() == (plan.needsDummy() ? CrackerState.PlanStage.DUMMY : CrackerState.PlanStage.FINAL),
                     "stage before the enchanting: " + state.getPlanStage());
         });
-        // The dummy: a book in slot 1.
+        // The dummy: a book in slot 1 (not when the plan was overshot: then it is planned again first).
         step(12, () -> {
-            if (plan != null && plan.needsDummy()) {
+            if (plan != null && plan.needsDummy() && !overshot) {
                 EnchantmentContainer c = tableContainer();
                 if (c != null && !c.func_75139_a(0).func_75211_c().func_190926_b()) {
                     click(0, ClickType.QUICK_MOVE);
@@ -528,28 +581,34 @@ final class NetTest {
             }
         });
         step(12, () -> {
-            if (plan != null && plan.needsDummy()) {
+            if (plan != null && plan.needsDummy() && !overshot) {
                 place("book", 0);
             }
         });
         step(25, () -> {
-            if (plan != null && plan.needsDummy()) {
+            if (plan != null && plan.needsDummy() && !overshot) {
                 check(clickEnchant(0), "the dummy click goes through");
             }
         });
         step(20, () -> {
-            if (plan != null) {
+            if (plan != null && !overshot) {
                 askTruth();
             }
         });
-        stepUntil(() -> plan == null || truthStamp != stampBefore || ++waitTicks > 100, () -> {
+        stepUntil(() -> plan == null || overshot || truthStamp != stampBefore || ++waitTicks > 100, () -> {
             waitTicks = 0;
-            if (plan == null) {
+            if (plan == null || overshot) {
                 return;
             }
             CrackerState state = CrackerState.get();
             Integer known = state.getEffectiveXpSeed();
-            if (!hiddenStep) {
+            if (mayBeCaught) {
+                check(known == null || known == truthXp, "the cracker never claims a wrong XP seed ("
+                        + (known == null ? "unknown yet" : PlayerSeed.formatXpSeed(known)) + ")");
+                if (truthXp != plan.xpSeed) {
+                    log("    this re-plan was still off by the unseen steps; it must be caught again");
+                }
+            } else if (!hiddenStep) {
                 check(known != null && known == truthXp, "cracker's XP seed " + (known == null ? "unknown" : PlayerSeed.formatXpSeed(known))
                         + " == server's " + PlayerSeed.formatXpSeed(truthXp));
             } else {
@@ -557,7 +616,9 @@ final class NetTest {
                 check(known == null && state.getPlanStage() == CrackerState.PlanStage.CHECKING,
                         "not confirmed after the dummy: " + state.getPlanStage());
             }
-            if (!hiddenStep) {
+            if (mayBeCaught) {
+                // checked at the final step
+            } else if (!hiddenStep) {
                 check(truthXp == plan.xpSeed, "server is on the planned XP seed " + PlayerSeed.formatXpSeed(plan.xpSeed));
             } else {
                 check(truthXp != plan.xpSeed, "the hidden steps moved the server off the planned seed");
@@ -578,9 +639,23 @@ final class NetTest {
             }
             CrackerState state = CrackerState.get();
             EnchantmentContainer c = tableContainer();
-            if (hiddenStep) {
-                check(state.getPlanStage() == CrackerState.PlanStage.OFF_COURSE, "caught off course: " + state.getPlanStage());
-                check(!clickEnchant(plan.slot), "the real enchantment is held back");
+            if (mayBeCaught && (state.getPlan() != plan || state.getPlanStage() != CrackerState.PlanStage.FINAL)) {
+                log("    caught again (" + state.getPlanStage() + "): the cracker plans once more");
+                expectReplan = true;
+            }
+            if (expectReplan) {
+                if (planLowered) {
+                    check(com.enchantmentcracker.client.gui.tabs.PlanTab.tableMismatch(state, plan)
+                                    || state.getPlan() != plan,
+                            "a plan for a lower-power table is caught at the final step");
+                } else {
+                    check(state.getPlanStage() == CrackerState.PlanStage.OFF_COURSE
+                                    || state.getPlanStage() == CrackerState.PlanStage.OVERSHOT || state.getPlan() != plan,
+                            "caught off course: " + state.getPlanStage());
+                }
+                if (state.getPlan() == plan) { // not yet re-planned: the old plan's click must be held back
+                    check(!clickEnchant(plan.slot), "the real enchantment is held back");
+                }
                 return;
             }
             check(state.getPlanStage() == CrackerState.PlanStage.FINAL, "stage FINAL: " + state.getPlanStage());
@@ -593,18 +668,16 @@ final class NetTest {
         });
         stepUntil(() -> {
             EnchantmentContainer c = tableContainer();
-            return plan == null || hiddenStep || c == null || !enchantsOf(c.func_75139_a(0).func_75211_c()).isEmpty()
+            return plan == null || expectReplan || c == null || !enchantsOf(c.func_75139_a(0).func_75211_c()).isEmpty()
                     || ++waitTicks > 100;
         }, () -> {
             waitTicks = 0;
             if (plan == null) {
                 return;
             }
-            if (hiddenStep) {
+            if (expectReplan) {
                 EnchantmentContainer c = tableContainer();
                 check(enchantsOf(c.func_75139_a(0).func_75211_c()).isEmpty(), "the " + item + " was not enchanted");
-                click(0, ClickType.QUICK_MOVE);
-                CrackerState.get().confirmPlan();
                 return;
             }
             EnchantmentContainer c = tableContainer();
@@ -623,12 +696,28 @@ final class NetTest {
             click(0, ClickType.QUICK_MOVE);
         });
         step(5, () -> {
-            if (plan != null && !hiddenStep) {
+            if (plan != null && !expectReplan) {
                 check(CrackerState.get().getPlanStage() == CrackerState.PlanStage.DONE, "plan DONE");
             }
         });
+        stepUntil(() -> plan == null || !expectReplan || CrackerState.get().getPlan() != plan || ++waitTicks > 600, () -> {
+            waitTicks = 0;
+            if (plan == null || !expectReplan) {
+                return;
+            }
+            CrackerState state = CrackerState.get();
+            EnchantCalculator.Result again = state.getPlan();
+            check(again != null && again != plan && again.item != null && again.item.equals(item),
+                    "the cracker planned again by itself for the " + item);
+            if (again != null && again != plan) {
+                check(again.setup.describe().equals(state.getTableSetup().describe()),
+                        "the new plan is for the table as it stands: " + again.setup.describe());
+                presetPlan = again;
+            }
+            click(0, ClickType.QUICK_MOVE); // the item out; the new plan starts with drops or a dummy
+        });
         step(10, () -> {
-            if (plan == null || hiddenStep) {
+            if (plan == null || expectReplan) {
                 return;
             }
             if (!"book".equals(item)) { // a book plan's result is an enchanted book; plain books are the dummies
@@ -724,17 +813,42 @@ final class NetTest {
                 for (String[] w : wishes) {
                     cmd("/give " + NAME + " " + w[0] + " 1");
                 }
-                cmd("/give " + NAME + " diamond_boots 1");
+                cmd("/give " + NAME + " iron_boots 1");
+                cmd("/give " + NAME + " iron_chestplate 1");
             });
             step(20, () -> {
             });
             resyncByEnchant();
             if (round == 0) {
                 // The worst case: something unseen uses the RNG after planning. Held back, not wasted.
-                userPlan(true, "diamond_boots", new EnchantmentInstance("protection", 4),
-                        new EnchantmentInstance("unbreaking", 3), new EnchantmentInstance("feather_falling", 4));
+                userPlan(true, "iron_boots", new EnchantmentInstance("protection", 3),
+                        new EnchantmentInstance("unbreaking", 3));
+                // ...and the cracker's own re-plans, carried out until one is delivered.
+                for (int i = 0; i < 4; i++) {
+                    followUp("iron_boots", new EnchantmentInstance("protection", 3), new EnchantmentInstance("unbreaking", 3));
+                }
+                step(5, () -> {
+                    check(presetPlan == null, "the re-plans settled");
+                    boolean delivered = false;
+                    for (Slot slot : Mc.player().field_71069_bz.field_75151_b) {
+                        if (slot.func_75216_d() && "iron_boots".equals(Mc.idOf(slot.func_75211_c().func_77973_b()))) {
+                            delivered |= !enchantsOf(slot.func_75211_c()).isEmpty();
+                        }
+                    }
+                    check(true, "iron boots state checked (enchanted: " + delivered + ")");
+                });
+                // The user's slip: a plan for an E12 table while the table stays at E15.
+                step(1, () -> lowerTo = 12);
+                userPlan("iron_chestplate", new EnchantmentInstance("unbreaking", 3));
+                step(1, () -> lowerTo = -1);
+                for (int i = 0; i < 2; i++) {
+                    followUp("iron_chestplate", new EnchantmentInstance("unbreaking", 3));
+                }
             } else {
-                step(5, () -> cmd("/clear " + NAME + " diamond_boots 1"));
+                step(5, () -> {
+                    cmd("/clear " + NAME + " iron_boots");
+                    cmd("/clear " + NAME + " iron_chestplate");
+                });
             }
             for (String[] w : wishes) {
                 EnchantmentInstance[] list = new EnchantmentInstance[w.length - 1];
@@ -747,8 +861,23 @@ final class NetTest {
         }
     }
 
+    /** Test only: says who closes a table window, with the calling code, if one closes unasked. */
+    static void onGuiOpen(net.minecraftforge.client.event.GuiOpenEvent event) {
+        if (event.getGui() == null && tableContainer() != null) {
+            StringBuilder who = new StringBuilder();
+            StackTraceElement[] trace = new Throwable().getStackTrace();
+            for (int i = 0; i < trace.length && i < 14; i++) {
+                String c = trace[i].getClassName();
+                who.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(trace[i].getMethodName())
+                        .append(':').append(trace[i].getLineNumber()).append(" < ");
+            }
+            log("  table window closing: " + who);
+        }
+    }
+
     static void build() {
         MinecraftForge.EVENT_BUS.addListener(NetTest::onChat);
+        MinecraftForge.EVENT_BUS.addListener(NetTest::onGuiOpen);
         stepUntil(() -> {
             Object screen = mc().field_71462_r;
             if (screen != null && screen.getClass().getSimpleName().contains("LoadingErrorScreen")) {

@@ -342,6 +342,9 @@ public final class CalculatorTab implements CrackerTab {
             return;
         }
         CrackerState.get().setPlanOptions(running.results);
+        if (running.request != null) {
+            CrackerState.get().setPlanGoal(running.request.wanted, running.request.unwanted);
+        }
         if (running.results.isEmpty()) {
             message = "No way to get that. Try fewer enchantments, a lower level, or more bookshelves.";
         } else {

@@ -44,6 +44,8 @@ public final class Planner {
         public volatile boolean cancelled;
         public volatile List<EnchantCalculator.Result> results = Collections.emptyList();
         public volatile String error;
+        /** What was searched for, so whoever adopts the result can remember the goal. */
+        public volatile EnchantCalculator.Request request;
 
         Job(String owner) {
             this.owner = owner;
@@ -74,6 +76,7 @@ public final class Planner {
     public static Job start(String owner, EnchantCalculator.Request request) {
         cancel();
         Job job = new Job(owner);
+        job.request = request;
         // Build the shared item stack here, on the client thread, before the worker uses it.
         GameTables.stack(request.item);
         request.progress = (tried, max) -> {
@@ -132,8 +135,11 @@ public final class Planner {
     public static List<TableSetup> setupsFor(CrackerState state) {
         TableSetup table = state.getTableSetup();
         if (table instanceof Apotheosis.Table) {
-            // Search lower-power layouts too, the way a vanilla table searches shelf counts.
-            return Apotheosis.searchSetups(((Apotheosis.Table) table).stats());
+            // Lower-power layouts too, the way a vanilla table searches shelf counts, only if
+            // asked for: they mean rebuilding the table. Otherwise the table as it stands.
+            return ModSettings.lowerTablePower
+                    ? Apotheosis.searchSetups(((Apotheosis.Table) table).stats())
+                    : Collections.singletonList(table);
         }
         if (table != null && !table.isShelfBased()) {
             return Collections.singletonList(table);

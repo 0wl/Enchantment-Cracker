@@ -65,6 +65,8 @@ public final class SearchTab implements CrackerTab {
     private static int itemIndex;
 
     private static List<EnchantCalculator.Result> results = Collections.emptyList();
+    /** The request behind {@link #results}, remembered as the plan's goal when one is used. */
+    private static EnchantCalculator.Request searched;
     private static int option;
     private static String message = "";
     private static Planner.Job job;
@@ -307,6 +309,7 @@ public final class SearchTab implements CrackerTab {
         results = Collections.emptyList();
         option = 0;
         message = "Searching...";
+        searched = request;
         job = Planner.start("search", request);
     }
 
@@ -321,6 +324,9 @@ public final class SearchTab implements CrackerTab {
         EnchantCalculator.Result chosen = ordered.remove(option);
         ordered.add(0, chosen);
         state.setPlanOptions(ordered);
+        if (searched != null) {
+            state.setPlanGoal(searched.wanted, searched.unwanted);
+        }
         screen.switchTo(CrackerScreen.Tab.PLAN);
     }
 

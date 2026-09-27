@@ -40,6 +40,11 @@ public final class ModSettings {
      * the two-enchantment lock (the Lock seed button) is used until it is verified.
      */
     public static boolean velocityCrack = false;
+    /**
+     * Let plans ask for a weaker table (Apotheosis: lower Eterna), the way vanilla plans pick a
+     * shelf count. Off by default: that means rebuilding the table, which is easy to miss.
+     */
+    public static boolean lowerTablePower = false;
 
     private ModSettings() {
     }
@@ -68,6 +73,7 @@ public final class ModSettings {
         tablePrediction = bool(props, "tablePrediction", tablePrediction);
         // A new key: "velocityCrack=true" saved by 1.2.6 and older must not switch it back on.
         velocityCrack = bool(props, "velocityLock", velocityCrack);
+        lowerTablePower = bool(props, "lowerTablePower", lowerTablePower);
         try {
             dropsPerTick = Math.max(1, Math.min(8, Integer.parseInt(props.getProperty("dropsPerTick", "2").trim())));
         } catch (NumberFormatException ignored) {
@@ -85,6 +91,7 @@ public final class ModSettings {
         props.setProperty("areaOutlines", String.valueOf(areaOutlines));
         props.setProperty("tablePrediction", String.valueOf(tablePrediction));
         props.setProperty("velocityLock", String.valueOf(velocityCrack));
+        props.setProperty("lowerTablePower", String.valueOf(lowerTablePower));
         props.setProperty("dropsPerTick", String.valueOf(dropsPerTick));
         props.setProperty("junkItem", junkItem == null ? "" : junkItem);
         Path path = file();

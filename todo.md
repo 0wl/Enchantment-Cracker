@@ -2,6 +2,18 @@
 
 Newest first.
 
+- [x] **1.2.9:** "The table shows 10/23/30 but the plan expects 8/19/24 (Apotheosis E12)": the planner
+  had picked a plan for a lower-Eterna table, which means rebuilding the table, and that step was
+  missed. Now:
+  - plans use the table as it stands unless Settings > "Plans may lower the table's power" is on
+    (`ModSettings.lowerTablePower`, off by default; `Planner.setupsFor`);
+  - auto fix: when the table does not match the plan at the final step (`PlanTab.tableMismatch`)
+    or the seed is off course or overshot (one drop too many), `ClientEvents.autoReplan` plans again for the same item and wishes
+    (`CrackerState.setPlanGoal`, recorded when Calc/Search adopt a plan) on the table as it stands,
+    adopts it and says the steps in chat. Once per plan, never in a loop.
+  - LAN test: a plan for E12 left on an E15 table is caught, held back, re-planned for E15 and
+    delivered 1:1; a plan knocked off course by a hidden /give is re-planned and delivered 1:1.
+
 - [x] **1.2.8:** Calc tab: the enchantment list is sorted A to Z by name, and a search box above it
   filters by name or mod id as you type (the rows are rebuilt per key; the box keeps focus).
 

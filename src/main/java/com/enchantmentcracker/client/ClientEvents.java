@@ -5,7 +5,10 @@ import com.enchantmentcracker.client.gui.CrackerScreen;
 import com.enchantmentcracker.client.gui.EnchantTablePrediction;
 import com.enchantmentcracker.client.gui.Widgets;
 import com.enchantmentcracker.core.CrackerState;
+import com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance;
 import com.enchantmentcracker.core.EnchantCalculator;
+import com.enchantmentcracker.core.TableSetup;
+import java.util.List;
 import com.enchantmentcracker.core.Models;
 import com.enchantmentcracker.core.VelocityCracker;
 import com.enchantmentcracker.game.AreaTracker;
@@ -113,6 +116,92 @@ public final class ClientEvents {
         }
     }
 
+    /** A re-plan being worked out, and the plan it replaces (re-planned once, never in a loop). */
+    private static Planner.Job replanJob;
+    private static EnchantCalculator.Result replannedFrom;
+    private static int replanTicks;
+
+    /**
+     * The auto fix: when the table does not match the plan at the final step (its Eterna or shelves
+     * differ from the plan's), or the seed went off course, plan again for the same item and wishes
+     * on the table as it stands. The seed is still tracked, so the new plan simply starts from here.
+     * Waits half a second first, so a freshly placed item's numbers have arrived.
+     */
+    private static void autoReplan(CrackerState state, EnchantCalculator.Result plan, CrackerState.PlanStage stage) {
+        Planner.Job job = replanJob;
+        if (job != null) {
+            if (!job.done) {
+                return;
+            }
+            replanJob = null;
+            if (job.cancelled) {
+                return;
+            }
+            if (job.error != null) {
+                Mc.chat("§c[Cracker] §fPlanning again failed: " + job.error);
+            } else if (job.results.isEmpty()) {
+                Mc.chat("§c[Cracker] §fNo way to get that on this table as it stands. Try other wishes in Calc or Search.");
+            } else {
+                state.setPlanOptions(job.results);
+                state.setPlanGoal(job.request.wanted, job.request.unwanted);
+                replannedFrom = null;
+                Mc.chat("§a[Cracker] §fNew plan for your table: " + summary(job.results.get(0)));
+            }
+            return;
+        }
+        boolean mismatch = com.enchantmentcracker.client.gui.tabs.PlanTab.tableMismatch(state, plan);
+        // Off course, or more items dropped than the plan needs (one Q too many, or a /give, whose
+        // pickup animation is a real drop): the seed is still tracked, so plan again from here.
+        boolean offCourse = (stage == CrackerState.PlanStage.OFF_COURSE || stage == CrackerState.PlanStage.OVERSHOT)
+                && state.isLocked();
+        if (plan == null || plan == replannedFrom || !(mismatch || offCourse)) {
+            replanTicks = 0;
+            return;
+        }
+        if (++replanTicks < 10) {
+            return;
+        }
+        replanTicks = 0;
+        replannedFrom = plan;
+        List<EnchantmentInstance> wanted = state.getPlanWanted();
+        if (wanted.isEmpty() || plan.item == null) {
+            Mc.chat("§e[Cracker] §fThe table does not fit this plan. Plan again in Calc or Search.");
+            return;
+        }
+        EnchantCalculator.Request request = new EnchantCalculator.Request();
+        String problem = Planner.prepare(request, plan.item, wanted, state.getPlanUnwanted(), 3);
+        if (problem != null) {
+            Mc.chat("§e[Cracker] §fThe table does not fit this plan, and planning again is not possible yet: " + problem);
+            return;
+        }
+        TableSetup here = state.getTableSetup();
+        if (here != null) {
+            request.setups = java.util.Collections.singletonList(here); // the table as it stands
+        }
+        Mc.chat("§e[Cracker] §f" + (mismatch ? "The table is not set up as the plan expected"
+                : stage == CrackerState.PlanStage.OVERSHOT ? "More items were dropped than the plan needs"
+                : "The table is not on the planned seed") + ". Planning again for your table as it stands"
+                + (here != null ? " (" + here.describe() + ")" : "") + "...");
+        replanJob = Planner.start("replan", request);
+    }
+
+    /** "drop 12, enchant a book in slot 1, then your Diamond Boots in slot 3: Protection IV, ...". */
+    private static String summary(EnchantCalculator.Result plan) {
+        StringBuilder sb = new StringBuilder();
+        if (plan.needsDummy()) {
+            if (plan.itemsToThrow > 0) {
+                sb.append("drop ").append(plan.itemsToThrow).append(", ");
+            }
+            sb.append("enchant a book in slot 1, then ");
+        }
+        sb.append("your ").append(Mc.itemName(plan.item)).append(" in slot ").append(plan.slot + 1).append(": ");
+        for (int i = 0; i < plan.enchantments.size(); i++) {
+            EnchantmentInstance e = plan.enchantments.get(i);
+            sb.append(i == 0 ? "" : ", ").append(Mc.enchantmentName(e.enchantment, e.level));
+        }
+        return sb.toString();
+    }
+
     /** The final-step warning last said in chat, the one being timed, and for how long. */
     private static String warnedWarning;
     private static String pendingWarning;
@@ -140,6 +229,7 @@ public final class ClientEvents {
         if (wrong == null) {
             warnedWarning = null;
         }
+        autoReplan(state, plan, stage);
         if (plan != announcedPlan) {
             // A new plan: remember where it starts, announce nothing yet.
             announcedPlan = plan;
