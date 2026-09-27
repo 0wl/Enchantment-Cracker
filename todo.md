@@ -2,6 +2,9 @@
 
 Newest first.
 
+- [x] **1.2.8:** Calc tab: the enchantment list is sorted A to Z by name, and a search box above it
+  filters by name or mod id as you type (the rows are rebuilt per key; the box keeps focus).
+
 - [x] **Bug (servers / LAN guests): the table's XP seed reaches the client as 16 bits only.** Fixed in 1.2.5.
   - `SWindowPropertyPacket` writes container data with `writeShort`, so over a real network
     `EnchantmentContainer.getXPSeed()` (`func_217005_f`) is `(short) realXpSeed`, sign-extended

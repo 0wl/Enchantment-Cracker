@@ -220,6 +220,49 @@ public final class SelfTest {
         return out;
     }
 
+    /** The enchantment ids of the Calc tab's list rows, top to bottom. */
+    static List<String> calcRows() {
+        List<String> out = new ArrayList<>();
+        if (!(mc().field_71462_r instanceof CrackerScreen)) {
+            return out;
+        }
+        for (net.minecraft.client.gui.widget.Widget w : ((CrackerScreen) mc().field_71462_r).widgets()) {
+            if (w instanceof com.enchantmentcracker.client.gui.Widgets.WishButton) {
+                out.add(w.func_230458_i_().getString()); // getMessage(): the enchantment id
+            }
+        }
+        return out;
+    }
+
+    static net.minecraft.client.gui.widget.TextFieldWidget calcSearch() {
+        if (!(mc().field_71462_r instanceof CrackerScreen)) {
+            return null;
+        }
+        for (net.minecraft.client.gui.widget.Widget w : ((CrackerScreen) mc().field_71462_r).widgets()) {
+            if (w instanceof com.enchantmentcracker.client.gui.Widgets.TextBox && "Search".equals(w.func_230458_i_().getString())) {
+                return (net.minecraft.client.gui.widget.TextFieldWidget) w;
+            }
+        }
+        return null;
+    }
+
+    static boolean isSortedByName(List<String> ids) {
+        for (int i = 1; i < ids.size(); i++) {
+            if (Mc.enchantmentName(ids.get(i - 1), 0).compareToIgnoreCase(Mc.enchantmentName(ids.get(i), 0)) > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static String names(List<String> ids) {
+        List<String> out = new ArrayList<>();
+        for (String id : ids) {
+            out.add(Mc.enchantmentName(id, 0));
+        }
+        return out.toString();
+    }
+
     // ------------------------------------------------------------------ the script
 
     static EnchantCalculator.SlotPreview[] predicted;
@@ -329,6 +372,43 @@ public final class SelfTest {
             step(10, () -> CrackerScreen.open(tab));
             step(5, () -> shot("tab_" + tab.name().toLowerCase()));
         }
+        // Calc tab: the enchantment list is A to Z, and the search box filters it while you type.
+        step(10, () -> {
+            CrackerState.get().setSelectedItem("diamond_sword");
+            CrackerScreen.open(CrackerScreen.Tab.CALCULATOR);
+        });
+        step(5, () -> {
+            List<String> ids = calcRows();
+            check(ids.size() > 3 && isSortedByName(ids), "Calc list is A to Z: " + names(ids));
+            net.minecraft.client.gui.widget.TextFieldWidget box = calcSearch();
+            check(box != null, "Calc tab has a search box");
+            if (box != null) { // click into it, as the mouse would
+                mc().field_71462_r.func_231044_a_(box.field_230690_l_ + 3, box.field_230691_m_ + 3, 0);
+            }
+        });
+        for (char c : "sha".toCharArray()) { // key by key: every key rebuilds the list
+            step(3, () -> mc().field_71462_r.func_231042_a_(c, 0)); // charTyped
+        }
+        step(5, () -> {
+            net.minecraft.client.gui.widget.TextFieldWidget box = calcSearch();
+            check(box != null && "sha".equals(box.func_146179_b()) && box.func_230999_j_(),
+                    "typing kept focus in the search box: " + (box == null ? "none" : box.func_146179_b()));
+            List<String> ids = calcRows();
+            boolean allMatch = !ids.isEmpty();
+            for (String id : ids) {
+                allMatch &= Mc.enchantmentName(id, 0).toLowerCase().contains("sha") || id.contains("sha");
+            }
+            check(allMatch && isSortedByName(ids), "search \"sha\" lists only matches, A to Z: " + names(ids));
+            shot("calc_search");
+        });
+        step(5, () -> {
+            net.minecraft.client.gui.widget.TextFieldWidget box = calcSearch();
+            if (box != null) {
+                box.func_146180_a(""); // setText: back to the whole list
+            }
+        });
+        step(5, () -> check(calcRows().size() > 3, "clearing the search shows the whole list again"));
+
         step(10, () -> {
             SearchTab.preselect("looting", "diamond_sword", 3);
             CrackerScreen.open(CrackerScreen.Tab.SEARCH);

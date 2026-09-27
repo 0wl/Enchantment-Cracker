@@ -53,6 +53,10 @@ public final class CalculatorTab implements CrackerTab {
 
     private int wishScroll;
     private List<String> applicable = new ArrayList<>();
+    /** What the enchantment list is filtered by; kept while the window is open and reopened. */
+    private static String filter = "";
+    /** Give the search box its focus back after the rebuild that typing in it causes. */
+    private boolean refocusSearch;
     private String message = "";
     private Planner.Job job;
 
@@ -71,7 +75,7 @@ public final class CalculatorTab implements CrackerTab {
 
         CrackerState state = CrackerState.get();
         syncPickerToSelection(state.getSelectedItem());
-        applicable = applicableEnchantments(state.getSelectedItem());
+        applicable = applicableEnchantments(state.getSelectedItem(), filter);
 
         // --- shape row
         int rowY = y + 11;
@@ -144,6 +148,26 @@ public final class CalculatorTab implements CrackerTab {
             CrackerState.get().clearWishlist();
             message = "";
         }).tooltip("Forget every wanted and unwanted enchantment."));
+
+        // --- search the enchantments by name (or mod id)
+        Widgets.TextBox search = screen.addWidget(new Widgets.TextBox(Mc.font(), x + width - 108, y + 64, 100, 13,
+                "Search").maxLength(30));
+        search.setText(filter);
+        search.func_195612_c(filter.isEmpty() ? "Search..." : null); // setSuggestion: grey hint while empty
+        search.func_212954_a(text -> { // setResponder
+            search.func_195612_c(text.isEmpty() ? "Search..." : null);
+            if (!text.equals(filter)) {
+                filter = text;
+                wishScroll = 0;
+                refocusSearch = true;
+                screen.rebuild(); // the rows below are widgets: rebuild them for the new filter
+            }
+        });
+        if (refocusSearch) {
+            refocusSearch = false;
+            search.func_146195_b(true);  // setFocused2
+            screen.func_231035_a_(search); // setListener: keys keep going to the box
+        }
 
         // --- wishlist rows
         int listY = y + 79;
@@ -233,14 +257,30 @@ public final class CalculatorTab implements CrackerTab {
         }
     }
 
-    private static List<String> applicableEnchantments(String item) {
+    /**
+     * The enchantments this item can get from a table, A to Z by the name shown, narrowed to
+     * those whose name or id contains {@code filter} (any case).
+     */
+    private static List<String> applicableEnchantments(String item, String filter) {
+        String wanted = filter == null ? "" : filter.trim().toLowerCase(java.util.Locale.ROOT);
         List<String> list = new ArrayList<>();
         for (String enchantment : CrackEnchantments.tableEnchantments()) {
-            if (CrackEnchantments.getMaxLevelInTable(enchantment, item) > 0) {
+            if (CrackEnchantments.getMaxLevelInTable(enchantment, item) <= 0) {
+                continue;
+            }
+            if (wanted.isEmpty() || displayName(enchantment).toLowerCase(java.util.Locale.ROOT).contains(wanted)
+                    || enchantment.toLowerCase(java.util.Locale.ROOT).contains(wanted)) {
                 list.add(enchantment);
             }
         }
+        list.sort(java.util.Comparator.comparing((String e) -> displayName(e).toLowerCase(java.util.Locale.ROOT))
+                .thenComparing(e -> e));
         return list;
+    }
+
+    /** The enchantment's name as the list shows it, without a level. */
+    private static String displayName(String enchantment) {
+        return Mc.enchantmentName(enchantment, 0);
     }
 
     // ------------------------------------------------------------------ actions
@@ -332,7 +372,7 @@ public final class CalculatorTab implements CrackerTab {
         Mc.text(ms, "Level", x + 80, y + 53, Theme.TEXT_DARK);
 
         Mc.text(ms, "Enchantments", x, y + 68, Theme.TEXT_TITLE);
-        Mc.text(ms, "click to cycle, right-click back", x + 70, y + 68, Theme.TEXT_MUTED);
+        Mc.text(ms, Mc.trim("A-Z; click to cycle, right-click back", width - 70 - 114), x + 70, y + 68, Theme.TEXT_MUTED);
 
         int listY = y + 79;
         int listHeight = height - 79 - 20;
@@ -340,7 +380,8 @@ public final class CalculatorTab implements CrackerTab {
         Theme.scrollbar(ms, x + width - 6, listY, rows * 13, applicable.size() * 13, wishScroll * 13);
 
         if (applicable.isEmpty()) {
-            Mc.text(ms, "This item cannot be enchanted at a table.", x, listY + 4, Theme.BAD);
+            Mc.text(ms, filter.trim().isEmpty() ? "This item cannot be enchanted at a table."
+                    : "No enchantment for this item matches \"" + filter.trim() + "\".", x, listY + 4, Theme.BAD);
         }
     }
 
