@@ -45,6 +45,10 @@ public final class ModSettings {
      * shelf count. Off by default: that means rebuilding the table, which is easy to miss.
      */
     public static boolean lowerTablePower = false;
+    /** Say in chat when you do something that uses your hidden random numbers on a server. */
+    public static boolean rngWarnings = true;
+    /** The "Next:" line under the enchanting table, and the highlights that go with it. */
+    public static boolean planGuide = true;
 
     private ModSettings() {
     }
@@ -74,6 +78,8 @@ public final class ModSettings {
         // A new key: "velocityCrack=true" saved by 1.2.6 and older must not switch it back on.
         velocityCrack = bool(props, "velocityLock", velocityCrack);
         lowerTablePower = bool(props, "lowerTablePower", lowerTablePower);
+        rngWarnings = bool(props, "rngWarnings", rngWarnings);
+        planGuide = bool(props, "planGuide", planGuide);
         try {
             dropsPerTick = Math.max(1, Math.min(8, Integer.parseInt(props.getProperty("dropsPerTick", "2").trim())));
         } catch (NumberFormatException ignored) {
@@ -92,6 +98,8 @@ public final class ModSettings {
         props.setProperty("tablePrediction", String.valueOf(tablePrediction));
         props.setProperty("velocityLock", String.valueOf(velocityCrack));
         props.setProperty("lowerTablePower", String.valueOf(lowerTablePower));
+        props.setProperty("rngWarnings", String.valueOf(rngWarnings));
+        props.setProperty("planGuide", String.valueOf(planGuide));
         props.setProperty("dropsPerTick", String.valueOf(dropsPerTick));
         props.setProperty("junkItem", junkItem == null ? "" : junkItem);
         Path path = file();

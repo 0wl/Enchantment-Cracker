@@ -200,7 +200,9 @@ final class NetTest {
                         + " that still fit");
             }
             if (lockedAtStart) {
-                check(resolved != null && resolveTicks <= 2, "locked seed knew this XP seed at once (" + resolveTicks + " ticks)");
+                if (!expectDrift) {
+                    check(resolved != null && resolveTicks <= 2, "locked seed knew this XP seed at once (" + resolveTicks + " ticks)");
+                }
             }
             TableSetup setup = state.getTableSetup();
             predicted = null;
@@ -331,6 +333,10 @@ final class NetTest {
     static boolean followUpOnly;
     /** After planning, change the table's Quanta/Arcana/Rectification but not its Eterna or numbers. */
     static boolean changeAfterPlan;
+    /** Rounds right after hidden RNG use: the lock cannot name the seed at once, the re-sync will. */
+    static boolean expectDrift;
+    static List<String> chatMark = Collections.emptyList();
+    static boolean guideShot;
     static int cobbleBefore;
 
     /** Every shelf position around the table, bottom row first: 16 per row. */
@@ -455,6 +461,100 @@ final class NetTest {
         userPlan(false, item, wishes);
     }
 
+    /** The next-step guide at the table right now. */
+    static com.enchantmentcracker.client.PlanGuide.Step guide() {
+        EnchantmentContainer c = tableContainer();
+        return c == null ? null : com.enchantmentcracker.client.PlanGuide.next(CrackerState.get(), c);
+    }
+
+    /** Checks the guide's line starts with {@code start} (and, if given, points at that item or button). */
+    static void checkGuide(String start, String item, int enchantSlot, com.enchantmentcracker.client.PlanGuide.Button button) {
+        com.enchantmentcracker.client.PlanGuide.Step g = guide();
+        boolean ok = g != null && g.text.startsWith(start) && (item == null || item.equals(g.item))
+                && (enchantSlot < 0 || g.enchantSlot == enchantSlot) && (button == null || g.button == button);
+        check(ok, "guide says \"" + (g == null ? "nothing" : g.text) + "\" (expected \"" + start + "...\")");
+    }
+
+    static void markChat() {
+        chatMark = Mc.recentChat();
+    }
+
+    /** The mod's chat lines since {@link #markChat}. */
+    static List<String> newChat() {
+        List<String> now = Mc.recentChat();
+        if (chatMark.isEmpty()) {
+            return now;
+        }
+        int i = now.lastIndexOf(chatMark.get(chatMark.size() - 1));
+        return i < 0 ? now : now.subList(i + 1, now.size());
+    }
+
+    static boolean chatHas(String needle) {
+        for (String line : newChat()) {
+            if (line.contains(needle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Seed-move warnings: real damage and a real sprint on the server, each reported in chat, and
+     * the next enchantment's re-sync naming them; with the setting off, silence.
+     */
+    static void rngWatchChecks() {
+        step(10, () -> {
+            expectDrift = true;
+            markChat();
+            cmd("/effect give " + NAME + " minecraft:instant_damage 1 0");
+        });
+        step(40, () -> check(chatHas("You took damage"), "damage is reported in chat: " + newChat()));
+        step(1, NetTest::markChat);
+        round("book", 0);
+        // With steps missed, the new XP seed is only worked out once an item is back in the table.
+        refreshTable();
+        step(10, () -> check(chatHas("Re-synced over") && chatHas("took damage"), "the re-sync names the damage: " + newChat()));
+        // A real sprint: facing open ground (south), forward + sprint held for a few ticks.
+        step(5, () -> {
+            markChat();
+            Mc.player().func_71053_j(); // closeScreen
+            Mc.player().field_70177_z = 0F; // rotationYaw: south, away from the shelves
+        });
+        step(3, () -> {
+            net.minecraft.client.settings.KeyBinding.func_197980_a(mc().field_71474_y.field_74351_w.getKey(), true); // forward
+            net.minecraft.client.settings.KeyBinding.func_197980_a(mc().field_71474_y.field_151444_V.getKey(), true); // sprint
+        });
+        step(6, () -> {
+        });
+        step(10, () -> {
+            net.minecraft.client.settings.KeyBinding.func_197980_a(mc().field_71474_y.field_74351_w.getKey(), false);
+            net.minecraft.client.settings.KeyBinding.func_197980_a(mc().field_71474_y.field_151444_V.getKey(), false);
+        });
+        step(20, () -> {
+            check(chatHas("sprinting"), "sprinting is reported: " + newChat());
+            cmd("/tp " + NAME + " " + (table.func_177958_n() + 0.5) + " " + table.func_177956_o() + " "
+                    + (table.func_177952_p() + 3.5) + " facing " + p(table, 0, 1, 0));
+        });
+        reopen();
+        step(1, NetTest::markChat);
+        round("book", 0);
+        refreshTable();
+        step(10, () -> check(chatHas("Re-synced over") && chatHas("sprinting"), "the re-sync names the sprint: " + newChat()));
+        // Setting off: silence.
+        step(5, () -> {
+            com.enchantmentcracker.client.ModSettings.rngWarnings = false;
+            markChat();
+            cmd("/effect give " + NAME + " minecraft:instant_damage 1 0");
+        });
+        step(40, () -> check(!chatHas("You took damage"), "no warning with the setting off: " + newChat()));
+        round("book", 0);
+        step(5, () -> {
+            check(!chatHas("Re-synced over"), "no re-sync message with the setting off");
+            com.enchantmentcracker.client.ModSettings.rngWarnings = true;
+            expectDrift = false;
+        });
+    }
+
     /** Carries out the cracker's next re-plan, if it made one; otherwise does nothing. */
     static void followUp(String item, EnchantmentInstance... wishes) {
         step(1, () -> followUpOnly = true);
@@ -547,10 +647,17 @@ final class NetTest {
             if (plan == null || !plan.needsDummy() || plan.itemsToThrow <= 0) {
                 return;
             }
+            if (!expectReplan && !mayBeCaught) {
+                AutoDropper.setJunkItem("cobblestone");
+                checkGuide("Drop " + plan.itemsToThrow + " more", null, -1, com.enchantmentcracker.client.PlanGuide.Button.DROP);
+            }
             cobbleBefore = count("cobblestone");
             AutoDropper.setJunkItem("cobblestone");
             com.enchantmentcracker.client.ClientEvents.startPlanDrops(); // the Drop button
-            check(AutoDropper.isRunning(), "auto drop started for " + plan.itemsToThrow);
+            // A /give's pickup item is spawned like a throw and counted as one (it is one, RNG-wise),
+            // so a plan needing a single drop can already be satisfied by it.
+            check(AutoDropper.isRunning() || CrackerState.get().getDropsRemaining() <= 0,
+                    "auto drop started for " + plan.itemsToThrow + " (or nothing left to drop)");
         });
         stepUntil(() -> plan == null || !AutoDropper.isRunning() || ++waitTicks > 6000, () -> {
             waitTicks = 0;
@@ -598,11 +705,17 @@ final class NetTest {
         });
         step(12, () -> {
             if (plan != null && plan.needsDummy() && !overshot) {
+                if (!expectReplan && !mayBeCaught) {
+                    checkGuide("Now the dummy: put a book", "book", -1, null);
+                }
                 place("book", 0);
             }
         });
         step(25, () -> {
             if (plan != null && plan.needsDummy() && !overshot) {
+                if (!expectReplan && !mayBeCaught) {
+                    checkGuide("Click slot 1", null, 0, null);
+                }
                 check(clickEnchant(0), "the dummy click goes through");
             }
         });
@@ -646,6 +759,9 @@ final class NetTest {
         });
         step(30, () -> {
             if (plan != null) {
+                if (!expectReplan && !mayBeCaught && CrackerState.get().getPlanStage() == CrackerState.PlanStage.FINAL) {
+                    checkGuide("Put your", plan.item, -1, null);
+                }
                 place(item, 0);
             }
         });
@@ -680,6 +796,13 @@ final class NetTest {
             int[] expected = plan.setup.levels(plan.xpSeed, item);
             check(Arrays.equals(expected, c.field_75167_g), "table shows the planned levels " + Arrays.toString(expected)
                     + ": " + Arrays.toString(c.field_75167_g));
+            if (!mayBeCaught) {
+                checkGuide("Click slot " + (plan.slot + 1), null, plan.slot, null);
+                if (!guideShot) {
+                    guideShot = true;
+                    shot("guide_final");
+                }
+            }
             check(clickEnchant(plan.slot), "the real enchantment click goes through");
         });
         stepUntil(() -> {
@@ -714,6 +837,7 @@ final class NetTest {
         step(5, () -> {
             if (plan != null && !expectReplan) {
                 check(CrackerState.get().getPlanStage() == CrackerState.PlanStage.DONE, "plan DONE");
+                checkGuide("Done!", null, -1, null);
             }
         });
         stepUntil(() -> plan == null || !expectReplan || CrackerState.get().getPlan() != plan || ++waitTicks > 600, () -> {
@@ -790,6 +914,60 @@ final class NetTest {
                 "locked from two XP seeds across the throw (" + CrackerState.get().getStatusMessage() + ")"));
     }
 
+    /**
+     * The Calc tab only offers levels the table can give: roll the user's table for many XP
+     * seeds and check no enchantment ever comes out above the predicted top level.
+     */
+    static void reachChecks() {
+        TableSetup setup = CrackerState.get().getTableSetup();
+        String[] items = {"diamond_sword", "diamond_boots", "diamond_pickaxe", "book", "bow", "golden_chestplate"};
+        java.util.Random rng = new java.util.Random(11);
+        int beaten = 0;
+        int cases = 0;
+        StringBuilder tops = new StringBuilder();
+        for (String item : items) {
+            java.util.BitSet powers = setup == null ? null : setup.powers(item);
+            if (powers == null) {
+                check(false, "the table reports its powers for " + item);
+                return;
+            }
+            java.util.Map<String, Integer> seen = new java.util.HashMap<>();
+            for (int i = 0; i < 6000; i++) {
+                int xpSeed = rng.nextInt();
+                int[] levels = setup.levels(xpSeed, item);
+                for (int slot = 0; slot < 3; slot++) {
+                    if (levels[slot] > 0) {
+                        for (EnchantmentInstance got : setup.enchantments(xpSeed, item, slot, levels[slot])) {
+                            seen.merge(got.enchantment, got.level, Math::max);
+                        }
+                    }
+                }
+            }
+            int shortOf = 0;
+            for (String enchantment : com.enchantmentcracker.core.CrackEnchantments.tableEnchantments()) {
+                int predicted = com.enchantmentcracker.core.TableReach.maxLevel(enchantment, item, powers);
+                int actual = seen.getOrDefault(enchantment, 0);
+                cases++;
+                if (actual > predicted) {
+                    beaten++;
+                    log("    beaten: " + item + " " + enchantment + " rolled " + actual + ", predicted top " + predicted);
+                } else if (actual < predicted) {
+                    shortOf++;
+                }
+            }
+            tops.append(' ').append(item).append(": powers ").append(powers.nextSetBit(1)).append('-')
+                    .append(com.enchantmentcracker.core.TableReach.topPower(powers)).append(", ")
+                    .append(shortOf).append(" tops not rolled in 6000;");
+        }
+        log("  table reach (" + describe(setup) + "):" + tops);
+        check(beaten == 0, "no roll of the user's table beats the Calc tab's top level (" + cases + " cases)");
+        int sharp = com.enchantmentcracker.core.TableReach.maxLevel("sharpness", "diamond_sword",
+                setup.powers("diamond_sword"));
+        check(sharp >= 1 && sharp <= com.enchantmentcracker.core.CrackEnchantments.getMaxLevelInTable("sharpness", "diamond_sword"),
+                "Calc tab tops Sharpness on a diamond sword at " + sharp + " for this table (any table: "
+                        + com.enchantmentcracker.core.CrackEnchantments.getMaxLevelInTable("sharpness", "diamond_sword") + ")");
+    }
+
     static void userFlows() {
         step(15, () -> Mc.player().func_71053_j()); // closeScreen
         step(20, () -> {
@@ -810,6 +988,7 @@ final class NetTest {
         step(10, () -> check(CrackerState.get().getTableSetup() != null
                         && CrackerState.get().getTableSetup().describe().contains(APOTH ? "E15.0" : "15 bookshelves"),
                 "the user's table is read: " + describe(CrackerState.get().getTableSetup())));
+        step(5, NetTest::reachChecks);
         ensureLocked();
         resyncByEnchant(); // over the gives above, if the seed was locked before them
         String[][] wishes = {
@@ -1133,7 +1312,14 @@ final class NetTest {
 
         }
         userFlows();
+        rngWatchChecks();
         velocityLock();
+        step(10, () -> {
+            CrackerState.get().setSelectedItem("diamond_sword");
+            com.enchantmentcracker.client.gui.CrackerScreen.open(com.enchantmentcracker.client.gui.CrackerScreen.Tab.CALCULATOR);
+        });
+        step(20, () -> shot("calc_reach"));
+        step(20, () -> Mc.player().func_71053_j()); // closeScreen
 
         step(5, () -> {
             log("");

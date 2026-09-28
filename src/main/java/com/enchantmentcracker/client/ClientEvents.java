@@ -98,6 +98,7 @@ public final class ClientEvents {
         TableWatcher.syncFromWorld();
         TableWatcher.tick();
         com.enchantmentcracker.game.AutoLocker.tick();
+        RngWatch.tick();
         if (ModSettings.autoDetectArea) {
             AreaTracker.tick();
         }
@@ -114,6 +115,17 @@ public final class ClientEvents {
         if (!(Mc.currentScreen() instanceof CrackerScreen)) {
             CrackerState.get().setPlayerLevel(TableWatcher.playerLevel());
         }
+    }
+
+    /** A re-plan is being worked out right now. */
+    public static boolean isReplanning() {
+        return replanJob != null;
+    }
+
+    /** Chat from the server: a /give to us moves the seed. */
+    @SubscribeEvent
+    public static void onChatReceived(net.minecraftforge.client.event.ClientChatReceivedEvent event) {
+        RngWatch.onChat(event.getMessage());
     }
 
     /** A re-plan being worked out, and the plan it replaces (re-planned once, never in a loop). */
@@ -384,6 +396,8 @@ public final class ClientEvents {
 
         CrackerState state = CrackerState.get();
         CrackerState.setDiagnostics(line -> EnchantmentCrackerMod.LOGGER.info("[seed] " + line));
+        CrackerState.setResyncListener(RngWatch::onResync);
+        RngWatch.reset();
         state.resetSeed();
         state.onNewPlayerEntity("Joined " + WorldProfiles.describeCurrent());
         worldKey = WorldProfiles.currentKey();
@@ -423,6 +437,7 @@ public final class ClientEvents {
             newEntityPending = false;
             AutoDropper.stop(); // a drop interrupted by death/respawn must not leave the view rotated
             CrackerState.get().onNewPlayerEntity(newEntityReason);
+            RngWatch.reset();
         }
     }
 
@@ -667,6 +682,7 @@ public final class ClientEvents {
         if (table != null) {
             EnchantTablePrediction.render((ContainerScreen<?>) screen, table,
                     event.getMatrixStack(), event.getMouseX(), event.getMouseY());
+            PlanGuide.render((ContainerScreen<?>) screen, table, event.getMatrixStack());
         }
 
         // Vanilla screens do not draw widget tooltips, so draw ours.

@@ -86,6 +86,15 @@ public final class SettingsTab implements CrackerTab {
                 "Writes the real enchantments of all three slots",
                 "under the enchanting table window."));
         // "Lock seed from thrown items" is not offered until it is verified on a real server.
+        rows.add(new Row("Next-step guide at the table", () -> ModSettings.planGuide,
+                v -> ModSettings.planGuide = v, false,
+                "A line under the enchanting table saying what to do",
+                "next, and highlights on the item and button to use."));
+        rows.add(new Row("Warn when something moves the seed", () -> ModSettings.rngWarnings,
+                v -> ModSettings.rngWarnings = v, false,
+                "On a server: says in chat when you take damage, sprint,",
+                "eat, splash into water, have a potion effect or get a",
+                "/give, which use your hidden random numbers."));
         rows.add(new Row("Plans may lower the table's power", () -> ModSettings.lowerTablePower,
                 v -> ModSettings.lowerTablePower = v, false,
                 "Apotheosis: plans may ask you to rebuild the table",

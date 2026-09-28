@@ -269,6 +269,42 @@ public final class Apotheosis {
             return levels;
         }
 
+        /**
+         * RealEnchantmentHelper: slot 3 is round(2E), slots 1 and 2 that times 0.2-0.4 and
+         * 0.6-0.8 (see {@link #levels}); the power is the level times 1 + g * Quanta, g drawn
+         * from -1 + Rectification to 1, clamped to 1..4x the Eterna ceiling. No enchantability
+         * fuzz: Apotheosis only uses the item's enchantability for Arcana.
+         */
+        @Override
+        public java.util.BitSet powers(String item) {
+            java.util.BitSet powers = new java.util.BitSet();
+            ItemStack stack = GameTables.stack(item);
+            if (stack.func_190926_b() || stack.getItemEnchantability() <= 0) { // isEmpty
+                return powers;
+            }
+            int top = Math.round(Math.max(1.5F, stats.eterna) * 2.0F);
+            java.util.BitSet levels = new java.util.BitSet();
+            levels.set(top < 3 ? top + 1 : top);
+            float[][] bounds = {{0.2F, 0.4F}, {0.6F, 0.8F}};
+            for (int slot = 0; slot < 2; slot++) {
+                int low = Math.max(1, Math.round(top * bounds[slot][0]));
+                int high = Math.max(1, Math.round(top * bounds[slot][1]));
+                for (int level = low; level <= high; level++) {
+                    levels.set(level < slot + 1 ? level + 1 : level);
+                }
+            }
+            int cap = Math.max(1, maxPower());
+            float quanta = stats.quanta / 100.0F;
+            float lowFactor = 1.0F + Math.min(1.0F, -1.0F + stats.rectification / 100.0F) * quanta;
+            float highFactor = 1.0F + quanta;
+            for (int level = levels.nextSetBit(1); level >= 0; level = levels.nextSetBit(level + 1)) {
+                int low = Math.max(1, Math.min(cap, Math.round(level * lowFactor)));
+                int high = Math.max(1, Math.min(cap, Math.round(level * highFactor)));
+                powers.set(Math.min(low, high), Math.max(low, high) + 1);
+            }
+            return powers;
+        }
+
         @Override
         public List<EnchantmentInstance> enchantments(int xpSeed, String item, int slot, int level) {
             return GameTables.convert(roll(new Random(), xpSeed, item, slot, level));

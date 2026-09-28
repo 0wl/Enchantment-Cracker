@@ -28,12 +28,17 @@ final class TableButtons {
     private static final int GAP = 2;
 
     private static final List<Widgets.McButton> buttons = new ArrayList<>();
+    /** For the next-step guide to point at; null when not shown. */
+    static Widgets.McButton lockButton;
+    static Widgets.McButton dropButton;
 
     private TableButtons() {
     }
 
     static void add(GuiScreenEvent.InitGuiEvent.Post event, ContainerScreen<?> table) {
         buttons.clear();
+        lockButton = null;
+        dropButton = null;
         buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Cracker", CrackerScreen::openFromTable)
                 .tooltip("Open the Enchantment Cracker", "with this table's item filled in."));
         buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Predict", EnchantTablePrediction::toggle)
@@ -41,7 +46,7 @@ final class TableButtons {
                 .tooltip("Show the real enchantments", "of all three slots below the table."));
         // On a server the seed has to be locked from two enchantments first; one click does it.
         if (Mc.integratedServer() == null) {
-            buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Lock seed", AutoLocker::toggle)
+            buttons.add(lockButton = new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Lock seed", AutoLocker::toggle)
                     .labelFrom(() -> AutoLocker.isRunning() ? "Locking..."
                             : CrackerState.get().isLocked() ? "Locked" : "Lock seed")
                     .selectedWhen(AutoLocker::isRunning)
@@ -51,7 +56,7 @@ final class TableButtons {
                             "Click again to stop."));
         }
         if (ModSettings.autoDrop) {
-            buttons.add(new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Auto drop", ClientEvents::startPlanDrops)
+            buttons.add(dropButton = new Widgets.McButton(0, 0, WIDTH, HEIGHT, "Auto drop", ClientEvents::startPlanDrops)
                     .labelFrom(TableButtons::dropLabel)
                     .selectedWhen(AutoDropper::isRunning)
                     .tooltip("Drop exactly the junk items the plan",

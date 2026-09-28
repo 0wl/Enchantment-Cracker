@@ -152,6 +152,13 @@ public final class CrackerState {
      */
     private static java.util.function.Consumer<String> diagnostics = line -> { };
 
+    /** Told the offset every time a locked seed is confirmed at an enchantment (0 = in sync). */
+    private static java.util.function.IntConsumer resyncListener = offset -> { };
+
+    public static void setResyncListener(java.util.function.IntConsumer listener) {
+        resyncListener = listener == null ? offset -> { } : listener;
+    }
+
     public static void setDiagnostics(java.util.function.Consumer<String> sink) {
         diagnostics = sink == null ? line -> { } : sink;
     }
@@ -583,6 +590,9 @@ public final class CrackerState {
             }
         }
         diag("Re-sync " + list(current) + ": " + (made == null ? "not found" : offset + " step(s) off"));
+        if (made != null) {
+            resyncListener.accept(offset);
+        }
         if (made != null) {
             playerSeed = PlayerSeed.advance(made, late * PlayerSeed.STEPS_PER_ITEM_DROP);
             driftSteps += Math.abs(offset);

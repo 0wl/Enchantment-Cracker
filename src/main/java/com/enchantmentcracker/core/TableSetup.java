@@ -62,6 +62,15 @@ public abstract class TableSetup {
         }
     }
 
+    /**
+     * Every enchanting power this table can roll for {@code item} over all XP seeds, which
+     * decides the highest enchantment levels it can give (see {@link TableReach}). Null when
+     * this table cannot say.
+     */
+    public java.util.BitSet powers(String item) {
+        return null;
+    }
+
     public boolean isShelfBased() {
         return shelves >= 0;
     }

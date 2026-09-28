@@ -1,4 +1,5 @@
 import com.enchantmentcracker.core.AnvilPlanner;
+import com.enchantmentcracker.core.CrackEnchantments;
 import com.enchantmentcracker.core.CrackEnchantments.EnchantmentInstance;
 import com.enchantmentcracker.core.EnchantCalculator;
 import com.enchantmentcracker.core.EnchantModel;
@@ -53,12 +54,79 @@ public class FeatureTests {
         solveSets();
         System.out.println("== CrackerState on a server: half-known seeds, drops before the lock ==");
         serverFlow();
+        System.out.println("== TableReach (which levels a table can actually give) ==");
+        tableReach();
 
         System.out.println();
         System.out.println(failures == 0 ? "ALL " + checks + " CHECKS PASSED" : failures + " / " + checks + " CHECKS FAILED");
         if (failures != 0) {
             System.exit(1);
         }
+    }
+
+    // ------------------------------------------------------------------ table reach
+
+    /**
+     * Rolls real vanilla tables for many XP seeds and checks the predicted level caps are
+     * never beaten (sound) and are reached (tight) for the common cases.
+     */
+    static void tableReach() {
+        String[] items = {"diamond_sword", "iron_pickaxe", "golden_chestplate", "book", "bow", "leather_boots"};
+        int[] shelfCounts = {0, 4, 9, 15};
+        java.util.Random rng = new java.util.Random(7);
+        int beaten = 0;
+        int missed = 0;
+        int cases = 0;
+        for (String item : items) {
+            for (int shelves : shelfCounts) {
+                TableSetup table = Models.vanillaTable(shelves);
+                java.util.BitSet reach = com.enchantmentcracker.core.TableReach.powers(
+                        java.util.Collections.singletonList(table), item);
+                java.util.Map<String, Integer> seen = new java.util.HashMap<>();
+                for (int i = 0; i < 40000; i++) {
+                    int xpSeed = rng.nextInt();
+                    int[] levels = table.levels(xpSeed, item);
+                    for (int slot = 0; slot < 3; slot++) {
+                        if (levels[slot] <= 0) {
+                            continue;
+                        }
+                        for (EnchantmentInstance got : table.enchantments(xpSeed, item, slot, levels[slot])) {
+                            seen.merge(got.enchantment, got.level, Math::max);
+                        }
+                    }
+                }
+                for (String enchantment : CrackEnchantments.tableEnchantments()) {
+                    int predicted = com.enchantmentcracker.core.TableReach.maxLevel(enchantment, item, reach);
+                    int actual = seen.getOrDefault(enchantment, 0);
+                    cases++;
+                    if (actual > predicted) {
+                        beaten++;
+                        System.out.println("    beaten: " + item + " " + shelves + " shelves " + enchantment
+                                + " seen " + actual + " predicted " + predicted);
+                    } else if (actual < predicted && CrackEnchantments.getWeight(enchantment) >= 5) {
+                        missed++; // common enchantments should show their top level in 40,000 rolls
+                        System.out.println("    not seen: " + item + " " + shelves + " shelves " + enchantment
+                                + " seen " + actual + " predicted " + predicted);
+                    }
+                }
+            }
+        }
+        check(beaten == 0, "no roll ever beats the predicted top level (" + cases + " item/shelf/enchantment cases)");
+        check(missed == 0, "common enchantments reach the predicted top level (" + missed + " short)");
+        java.util.BitSet full = com.enchantmentcracker.core.TableReach.powers(
+                java.util.Collections.singletonList(Models.vanillaTable(15)), "diamond_sword");
+        java.util.BitSet none = com.enchantmentcracker.core.TableReach.powers(
+                java.util.Collections.singletonList(Models.vanillaTable(0)), "diamond_sword");
+        java.util.BitSet gold = com.enchantmentcracker.core.TableReach.powers(
+                java.util.Collections.singletonList(Models.vanillaTable(15)), "golden_sword");
+        int fullMax = com.enchantmentcracker.core.TableReach.maxLevel("sharpness", "diamond_sword", full);
+        int noneMax = com.enchantmentcracker.core.TableReach.maxLevel("sharpness", "diamond_sword", none);
+        int goldMax = com.enchantmentcracker.core.TableReach.maxLevel("sharpness", "golden_sword", gold);
+        check(fullMax == 4 && noneMax == 2 && goldMax == 5,
+                "Sharpness top level: diamond sword IV at 15 shelves (" + fullMax + "), II at 0 (" + noneMax
+                        + "), golden sword V at 15 (" + goldMax + ")");
+        check(com.enchantmentcracker.core.TableReach.maxLevel("mending", "diamond_sword", full) == 0,
+                "treasure (Mending) is never offered");
     }
 
     // ------------------------------------------------------------------ velocity, bit for bit

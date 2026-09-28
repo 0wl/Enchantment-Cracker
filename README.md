@@ -27,6 +27,9 @@ Client side only. Works in singleplayer, when hosting or joining a LAN world, an
 | **Plans the manipulation** | Choose a wishlist and it works out how many items to drop, how many bookshelves to use, and which slot to click, with up to three options. Opened in front of a table, it plans for the item in it; a plan is item-specific, so putting a different item in for the final enchantment gets a warning. |
 | **Guards the real enchantment** | While a plan is active, a click on the table that would spoil it is held back with the reason: drops still missing, the real item used as the dummy, the seed not confirmed or not the planned one (something unseen used your random numbers, a `/give` for one), the wrong item, table or slot. Shift-click enchants anyway. |
 | **Plans again by itself** | If the table does not match the plan at the last step (Apotheosis: its Eterna, Quanta, Arcana or Rectification differ from the plan's), the seed went off course, or more items were dropped than planned, it plans again for the same item and wishes on the table as it stands and says the new steps in chat. Plans use the table as it is unless *Plans may lower the table's power* is switched on in Settings. |
+| **Only offers what your table can give** | The Calc and Search tabs list only enchantments and levels your table can actually produce, worked out from the powers it can roll (its level numbers, the item's enchantability, and on Apotheosis its Eterna, Quanta and Rectification). Build the table up and the list follows by itself; wishing for more than the table can give says so instead of searching in vain. |
+| **Says what to do next** | Under the table, a *Next:* line tells you the one thing to do now at every step of a plan and highlights the item, slot or button to use. Can be switched off in Settings. |
+| **Warns when the seed moves** | On a server, a chat line when something you did uses the random numbers the cracker cannot see (taking damage, sprinting, eating, swimming, potion particles, a `/give`), and which of those it was when the next enchantment re-syncs. Can be switched off in Settings. |
 | **Drops the items for you** | Pick a junk item once in your inventory; the table gets a *Drop N* button that throws exactly the number the plan needs. |
 | **Reads your enchanting area** | Finds your table and every shelf around it, and outlines in the world which gaps to block to reach the count a plan needs. |
 | **Plans the anvil** | Finds the cheapest order to combine enchanted books onto an item, prior-work penalty included. Can start from the enchanted, already-worked item in your hand. |
@@ -54,7 +57,7 @@ Beside the enchanting table: **Cracker**, **Predict** and **Drop N**. Above your
 * **Seed**: what the mod knows, the two-XP-seed solver, manual entry, RNG nudges, and the
   brute-force cracker.
 * **Calc**: pick an item (including whatever you are holding), pick the enchantments you want
-  (or ban), press Calculate.
+  (or ban), press Calculate. Only enchantments and levels your table can give are listed.
 * **Plan**: the steps, live predictions for the table in front of you, and progress.
 * **Search**: every table enchantment; click one for the steps to get it.
 * **Anvil**: the cheapest book-combining order for an item.

@@ -10,6 +10,8 @@ import com.enchantmentcracker.core.CrackEnchantments;
 import com.enchantmentcracker.core.CrackItems;
 import com.enchantmentcracker.core.CrackerState;
 import com.enchantmentcracker.core.EnchantCalculator;
+import com.enchantmentcracker.core.TableReach;
+import com.enchantmentcracker.core.TableSetup;
 import com.enchantmentcracker.game.AreaTracker;
 import com.enchantmentcracker.game.Mc;
 import com.mojang.blaze3d.matrix.MatrixStack;
@@ -59,6 +61,11 @@ public final class CalculatorTab implements CrackerTab {
     private boolean refocusSearch;
     private String message = "";
     private Planner.Job job;
+    /** Powers the table(s) a plan may use can roll for the selected item; null when unknown. */
+    private java.util.BitSet reach;
+    /** What {@link #reach} was worked out for, to notice the table changing while open. */
+    private String reachKey = "";
+    private int reachCheck;
 
     @Override
     public String title() {
@@ -75,7 +82,10 @@ public final class CalculatorTab implements CrackerTab {
 
         CrackerState state = CrackerState.get();
         syncPickerToSelection(state.getSelectedItem());
-        applicable = applicableEnchantments(state.getSelectedItem(), filter);
+        List<TableSetup> setups = Planner.setupsFor(state);
+        reachKey = reachKey(setups, state.getSelectedItem());
+        reach = TableReach.powers(setups, state.getSelectedItem());
+        applicable = applicableEnchantments(state.getSelectedItem(), filter, reach);
 
         // --- shape row
         int rowY = y + 11;
@@ -176,7 +186,7 @@ public final class CalculatorTab implements CrackerTab {
         wishScroll = Math.max(0, Math.min(wishScroll, Math.max(0, applicable.size() - rows)));
         for (int i = 0; i < rows && i + wishScroll < applicable.size(); i++) {
             String enchantment = applicable.get(i + wishScroll);
-            int maxLevel = CrackEnchantments.getMaxLevelInTable(enchantment, state.getSelectedItem());
+            int maxLevel = TableReach.maxLevel(enchantment, state.getSelectedItem(), reach);
             screen.addWidget(new Widgets.WishButton(x, listY + i * 13, width - 8, 12,
                     enchantment, maxLevel,
                     () -> CrackerState.get().getWish(enchantment),
@@ -258,14 +268,15 @@ public final class CalculatorTab implements CrackerTab {
     }
 
     /**
-     * The enchantments this item can get from a table, A to Z by the name shown, narrowed to
-     * those whose name or id contains {@code filter} (any case).
+     * The enchantments this item can get from the table (one rolling {@code reach}, or any
+     * table when that is null), A to Z by the name shown, narrowed to those whose name or id
+     * contains {@code filter} (any case).
      */
-    private static List<String> applicableEnchantments(String item, String filter) {
+    private static List<String> applicableEnchantments(String item, String filter, java.util.BitSet reach) {
         String wanted = filter == null ? "" : filter.trim().toLowerCase(java.util.Locale.ROOT);
         List<String> list = new ArrayList<>();
         for (String enchantment : CrackEnchantments.tableEnchantments()) {
-            if (CrackEnchantments.getMaxLevelInTable(enchantment, item) <= 0) {
+            if (TableReach.maxLevel(enchantment, item, reach) <= 0) {
                 continue;
             }
             if (wanted.isEmpty() || displayName(enchantment).toLowerCase(java.util.Locale.ROOT).contains(wanted)
@@ -276,6 +287,35 @@ public final class CalculatorTab implements CrackerTab {
         list.sort(java.util.Comparator.comparing((String e) -> displayName(e).toLowerCase(java.util.Locale.ROOT))
                 .thenComparing(e -> e));
         return list;
+    }
+
+    /** Identifies the tables and item {@link #reach} depends on. */
+    private static String reachKey(List<TableSetup> setups, String item) {
+        StringBuilder key = new StringBuilder(String.valueOf(item));
+        for (TableSetup setup : setups) {
+            key.append('|').append(setup.describe());
+        }
+        return key.toString();
+    }
+
+    /**
+     * Wishes this table cannot fulfil, as "Sharpness VI (V at most)" / "Mending (not from
+     * this table)"; empty when all are possible or the table is not known.
+     */
+    private List<String> impossibleWishes(CrackerState state) {
+        List<String> out = new ArrayList<>();
+        if (reach == null) {
+            return out;
+        }
+        String item = state.getSelectedItem();
+        for (CrackEnchantments.EnchantmentInstance want : state.getWanted()) {
+            int max = TableReach.maxLevel(want.enchantment, item, reach);
+            if (max < want.level) {
+                out.add(Mc.enchantmentName(want.enchantment, want.level) + (max <= 0 ? " (not from this table)"
+                        : " (" + Mc.enchantmentName(want.enchantment, max) + " at most)"));
+            }
+        }
+        return out;
     }
 
     /** The enchantment's name as the list shows it, without a level. */
@@ -298,6 +338,12 @@ public final class CalculatorTab implements CrackerTab {
         CrackerState state = CrackerState.get();
         if (!state.hasWishes()) {
             message = "Pick at least one enchantment to aim for.";
+            return;
+        }
+        List<String> impossible = impossibleWishes(state);
+        if (!impossible.isEmpty()) {
+            message = "This table cannot give " + String.join(", ", impossible)
+                    + ". Lower the wish, or raise the table's power and open it again.";
             return;
         }
         EnchantCalculator.Request request = new EnchantCalculator.Request();
@@ -328,6 +374,15 @@ public final class CalculatorTab implements CrackerTab {
 
     @Override
     public void tick() {
+        // The table can change while the window is open (shelves placed, stats re-read):
+        // follow it, so the list and its top levels always match the table as it stands.
+        if (++reachCheck >= 20) {
+            reachCheck = 0;
+            CrackerState state = CrackerState.get();
+            if (!reachKey.equals(reachKey(Planner.setupsFor(state), state.getSelectedItem()))) {
+                screen.rebuild();
+            }
+        }
         Planner.Job running = job;
         if (running == null || !running.done) {
             return;
@@ -420,6 +475,13 @@ public final class CalculatorTab implements CrackerTab {
 
     @Override
     public String statusLine() {
+        if (message.isEmpty() && reach == null) {
+            return "Levels shown are the most any table could give. Open your table to see what yours can.";
+        }
+        TableSetup table = CrackerState.get().getTableSetup();
+        if (message.isEmpty() && (table == null || !table.isShelfBased() || autoShelves() < 0)) {
+            return "Levels shown are what your table can give (power up to " + TableReach.topPower(reach) + ").";
+        }
         if (message.isEmpty() && autoShelves() >= 0) {
             int shelves = autoShelves();
             return shelves >= 15

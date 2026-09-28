@@ -92,6 +92,12 @@ public final class GameTables {
             return convert(Collections.singletonList(list.get(rand.nextInt(list.size())))).get(0);
         }
 
+        @Override
+        public java.util.BitSet powers(String item) {
+            return com.enchantmentcracker.core.TableReach.vanillaPowers(shelves,
+                    com.enchantmentcracker.core.CrackItems.getEnchantability(item));
+        }
+
         /** EnchantmentContainer#getEnchantmentList, leaving {@code rand} where the table leaves it. */
         private List<EnchantmentData> roll(Random rand, int xpSeed, String item, int slot, int level) {
             ItemStack stack = stack(item);

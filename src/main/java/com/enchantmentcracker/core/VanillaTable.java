@@ -40,6 +40,11 @@ public final class VanillaTable extends TableSetup {
         return list.isEmpty() ? null : list.get(rand.nextInt(list.size()));
     }
 
+    @Override
+    public java.util.BitSet powers(String item) {
+        return TableReach.vanillaPowers(shelves, CrackItems.getEnchantability(item));
+    }
+
     /** Vanilla level requirements: rolled in slot order, and a slot below its number is empty. */
     public static int[] levelsFor(int xpSeed, int shelves, String item) {
         Random rand = new Random(xpSeed);

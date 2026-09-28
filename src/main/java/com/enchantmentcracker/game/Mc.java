@@ -98,8 +98,21 @@ public final class Mc {
 
     // ------------------------------------------------------------------- text + i18n
 
+    /** The mod's last chat lines, newest last (for the self tests; the chat window shows them anyway). */
+    private static final java.util.Deque<String> RECENT_CHAT = new java.util.ArrayDeque<>();
+
+    public static synchronized java.util.List<String> recentChat() {
+        return new java.util.ArrayList<>(RECENT_CHAT);
+    }
+
     /** Prints a line into the player's own chat. Nothing is sent to the server. */
     public static void chat(String message) {
+        synchronized (Mc.class) {
+            RECENT_CHAT.addLast(message);
+            while (RECENT_CHAT.size() > 50) {
+                RECENT_CHAT.removeFirst();
+            }
+        }
         if (mc().field_71456_v == null) { // minecraft.ingameGUI
             return;
         }

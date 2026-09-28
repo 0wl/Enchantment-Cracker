@@ -2,6 +2,38 @@
 
 Newest first.
 
+- [x] **1.2.11: next-step guide, seed-move warnings, and only the levels your table can give.**
+  - `client/PlanGuide.java`: the "Next:" panel under the enchanting table (below the prediction
+    panel, or above the table when there is no room; on a very short window it narrows to stay
+    clear of the Pick junk button) saying what to do now at every plan stage, with pulsing
+    highlights on the inventory item, the enchant button or the Lock seed / Auto drop button.
+    Setting `planGuide`.
+  - `client/RngWatch.java`: on a server, a chat line when the player takes damage, sprints, eats or
+    drinks, goes into water, has a potion effect with particles, or gets a /give; throttled to
+    once per cause per 10 s; only once a seed is tracked. When the next enchantment re-syncs with
+    missed steps, `CrackerState.setResyncListener` -> `RngWatch.onResync` names the likely causes
+    (that happens once an item is back in the table: with steps missed, the new XP seed is only
+    worked out from the table's numbers and hints). Setting `rngWarnings`.
+  - **Table reach** (user: "check if enchants are even possible ... fix the levels so it auto
+    accounts if the table doesn't start with 8/10/30"): `TableSetup.powers(item)` gives every
+    enchanting power the table can roll (vanilla: the slot levels for that shelf count, +1 +
+    2x0..ench/4, +/-15%; Apotheosis: round(2E) and its 0.2-0.4 / 0.6-0.8 slots, times
+    1 + g*Quanta with g from -1+Rectification to 1, capped at 4x the Eterna ceiling).
+    `core/TableReach` turns that into the top level of each enchantment (the highest level whose
+    power window holds a reachable power). The Calc list shows only enchantments the table can
+    give, each capped at that level, and follows the table while open; Calculate refuses wishes
+    above it with the reason; the Search tab's level cap and text use it too. Unknown table
+    (never opened): falls back to what any table could give, and says so.
+  - Tests: FeatureTests `tableReach()` rolls vanilla tables 40,000 times per item/shelf count
+    (792 cases): nothing beats the prediction, common enchantments reach it; diamond sword
+    Sharpness IV at 15 shelves (vanilla really cannot give V there; gold can). NetTest
+    `reachChecks()` does the same on the user's Apotheosis table (E15 Q15 A0: powers 5-35,
+    Sharpness tops at IV where any table allows IX; 360 cases, none beaten), screenshot
+    `calc_reach`. Guide checks at every stage of each plain plan (+ `guide_final`),
+    `rngWatchChecks()` (real instant damage + real sprint reported, re-sync names them, silent
+    with the setting off).
+  - Also: the About tab said "1.1.0"; it now shows the real version.
+
 - [x] **1.2.10:** A plan now also notices when the table's Quanta, Arcana or Rectification changed
   (Apotheosis): those change which enchantments come out but not the level numbers, so comparing the
   numbers alone missed them. `Apotheosis.Table.sameStats` is part of `PlanTab.tableMismatch`, so the

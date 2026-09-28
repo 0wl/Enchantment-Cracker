@@ -213,8 +213,18 @@ public final class SearchTab implements CrackerTab {
 
     private static int maxLevelFor(String enchantment) {
         String item = currentItem();
-        int max = item == null ? 0 : Models.get().maxTableLevel(enchantment, item);
+        int max = item == null ? 0 : tableMax(enchantment, item);
         return Math.max(1, max);
+    }
+
+    /**
+     * The highest level of {@code enchantment} the table a plan would use can put on
+     * {@code item}; the most any table could when the table is not known yet.
+     */
+    private static int tableMax(String enchantment, String item) {
+        java.util.BitSet reach = com.enchantmentcracker.core.TableReach.powers(
+                com.enchantmentcracker.client.Planner.setupsFor(CrackerState.get()), item);
+        return com.enchantmentcracker.core.TableReach.maxLevel(enchantment, item, reach);
     }
 
     private static String currentItem() {
@@ -422,8 +432,12 @@ public final class SearchTab implements CrackerTab {
         if (item == null) {
             return "";
         }
-        int max = Models.get().maxTableLevel(selected, item);
-        return "A table can put up to " + Mc.enchantmentName(selected, max) + " on " + Mc.itemName(item)
+        int max = tableMax(selected, item);
+        if (max <= 0) {
+            return "Your table cannot put " + Mc.enchantmentName(selected, 0) + " on " + Mc.itemName(item)
+                    + ": its power is too low or too high for any level of it.";
+        }
+        return "Your table can put up to " + Mc.enchantmentName(selected, max) + " on " + Mc.itemName(item)
                 + ". Press Find a way to see how, using your seed.";
     }
 
